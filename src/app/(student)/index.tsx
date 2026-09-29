@@ -1,29 +1,100 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Modal,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  Linking,
+    Animated,
+    Modal,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View
 } from 'react-native';
 
-import { CampusTheme } from '@/constants/theme';
+import {
+    loadSchedulePrefsForStudent,
+    SchedulePrefs,
+} from '@/components/schedule-onboarding-wizard';
+import { Spatial360Viewer } from '@/components/spatial-360-viewer';
+import {
+    GlassAvatar,
+    GlassBadge,
+    GlassButton,
+    GlassCard,
+    GlassView
+} from '@/components/ui/glass-components';
+import { Glass } from '@/constants/glass-theme';
 import { useAuth } from '@/context/auth-context';
 import { useAppTheme } from '@/context/theme-context';
 import { DataService } from '@/services/data-service';
 import { SEED_360_LOCATIONS } from '@/services/seed-data';
-import { Notice, Order, TimetableSlot, Campus360Location } from '@/types';
-import { Spatial360Viewer } from '@/components/spatial-360-viewer';
+import {
+    getTodayLiveSchedule,
+    TIMETABLE_BRANCHES,
+    TimetableEntry,
+} from '@/services/timetable-data';
+import { Campus360Location, Notice, Order, TimetableSlot } from '@/types';
+
+// ─── Live Pulse Dot (for dashboard) ──────────────────────────────────────────
+function PulseDotHome({ color }: { color: string }) {
+  const pulse = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 1.9, duration: 950, useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 1, duration: 950, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(opacityAnim, { toValue: 0.15, duration: 950, useNativeDriver: true }),
+          Animated.timing(opacityAnim, { toValue: 0.8, duration: 950, useNativeDriver: true }),
+        ]),
+      ])
+    ).start();
+  }, []);
+  return (
+    <View style={{ width: 10, height: 10, alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={{
+        position: 'absolute', width: 10, height: 10, borderRadius: 5,
+        backgroundColor: color, opacity: opacityAnim, transform: [{ scale: pulse }],
+      }} />
+      <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: color }} />
+    </View>
+  );
+}
+
+// ─── Quick Action Pill ───────────────────────────────────────────────────────
+function QuickActionPill({ icon, label, subLabel, onPress, color }: {
+  icon: React.ReactNode;
+  label: string;
+  subLabel: string;
+  onPress: () => void;
+  color: string;
+}) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.actionPill,
+        pressed && { opacity: 0.9, transform: [{ scale: 0.96 }] },
+        { borderColor: `${color}40` },
+      ]}
+      onPress={onPress}
+    >
+      <View style={[styles.actionIconBox, { backgroundColor: `${color}20` }]}>
+        {icon}
+      </View>
+      <Text style={styles.actionPillBold}>{label}</Text>
+      <Text style={[styles.actionPillMuted, { color: Glass.textMuted }]}>{subLabel}</Text>
+    </Pressable>
+  );
+}
 
 export default function StudentHomeScreen() {
   const router = useRouter();
-  const { profile, college, switchDemoRole } = useAuth();
-  const { colors, isDark } = useAppTheme();
+  const { profile, college } = useAuth();
+  const { glass } = useAppTheme();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
@@ -31,6 +102,25 @@ export default function StudentHomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [active360Modal, setActive360Modal] = useState<Campus360Location | null>(null);
+  const [schedulePrefs, setSchedulePrefs] = useState<SchedulePrefs | null>(null);
+  const [now, setNow] = useState(new Date());
+
+  // Refresh clock every 60s
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Load schedule prefs, or infer from the student's PRN / roll number if available
+  useEffect(() => {
+    const hydrateSchedulePrefs = async () => {
+      const prnCandidate = profile?.registrationId || profile?.rollNumber || profile?.studentId || '';
+      const resolved = await loadSchedulePrefsForStudent(prnCandidate);
+      if (resolved) setSchedulePrefs(resolved);
+    };
+
+    hydrateSchedulePrefs();
+  }, [profile]);
 
   const loadDashboardData = async () => {
     if (!college) return;
@@ -64,7 +154,21 @@ export default function StudentHomeScreen() {
     setRefreshing(false);
   };
 
-  // Next class from timetable
+  // Live schedule data from new timetable system
+  const liveSchedule = schedulePrefs
+    ? getTodayLiveSchedule(schedulePrefs.branchId, schedulePrefs.divisionId, schedulePrefs.batchId)
+    : null;
+
+  const liveClass: TimetableEntry | null = liveSchedule?.ongoing || liveSchedule?.upcoming[0] || null;
+  const isOngoing = !!liveSchedule?.ongoing;
+
+  // Branch color for accents
+  const branch = schedulePrefs
+    ? TIMETABLE_BRANCHES.find((b) => b.branchId === schedulePrefs.branchId)
+    : null;
+  const branchColor = branch?.color || glass.purpleBright;
+
+  // Fallback next class from old timetable
   const nextClass = timetable[0] || {
     subject: 'Database Management Systems',
     room: 'IT-204',
@@ -107,7 +211,7 @@ export default function StudentHomeScreen() {
   };
 
   return (
-    <View style={[styles.safeContainer, { backgroundColor: colors.background }]}>
+    <View style={styles.safeContainer}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
@@ -115,154 +219,209 @@ export default function StudentHomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary}
+            tintColor={glass.purpleBright}
           />
         }
       >
         {/* TOP HEADER */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={[styles.collegeTag, { color: colors.primary }]}>
+            <Text style={styles.collegeTag}>
               {college?.shortName ? college.shortName.toUpperCase() : 'JSPM TATHAWADE'} • PUNE
             </Text>
-            <Text style={[styles.greetingTitle, { color: colors.text }]}>
+            <Text style={styles.greetingTitle}>
               Hey, {profile?.name?.split(' ')[0] || 'Aarav'}
             </Text>
-            <Text style={[styles.dateSubtitle, { color: colors.textMuted }]}>Monday, 21 September · make it count</Text>
+            <Text style={styles.dateSubtitle}>Monday, 21 September · make it count</Text>
           </View>
 
           <Pressable
-            style={[styles.avatarCircle, { borderColor: colors.primary }]}
+            style={[styles.avatarCircle, { borderColor: glass.purple }]}
             onPress={() => router.push('/(student)/profile' as any)}
           >
-            <Text style={[styles.avatarInitial, { color: colors.primary }]}>
-              {profile?.name?.charAt(0).toUpperCase() || 'A'}
-            </Text>
+            <GlassAvatar initials={profile?.name?.charAt(0).toUpperCase() || 'A'} size="md" ringColor={glass.purple} />
           </Pressable>
         </View>
 
         {/* ACADEMIC IDENTITY CARD */}
-        <View style={[styles.academicCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <Text style={[styles.academicCollegeName, { color: colors.text }]}>
+        <GlassCard variant="elevated" style={styles.academicCard}>
+          <Text style={styles.academicCollegeName}>
             {college?.name || "JSPM's Tathawade Technical Campus"}
           </Text>
-          <Text style={[styles.academicMeta, { color: colors.primary }]}>
+          <Text style={[styles.academicMeta, { color: glass.purple }]}>
             {profile?.department || 'Information Technology'} · {profile?.year || '3rd Year'} ·{' '}
             {profile?.division || 'Div A'}
           </Text>
-        </View>
+        </GlassCard>
 
-        {/* 4 QUICK ACTION TALL PILLS */}
+        {/* 4 QUICK ACTION PILLS */}
         <View style={styles.quickActionsRow}>
-          {/* Explore */}
-          <Pressable
-            style={[styles.actionPill, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+          <QuickActionPill
+            icon={<Ionicons name="compass" size={24} color={glass.purple} />}
+            label="Explore"
+            subLabel="Campus"
             onPress={() => router.push('/(student)/campus' as any)}
-          >
-            <Ionicons name="compass" size={24} color={colors.primary} />
-            <Text style={[styles.actionPillBold, { color: colors.text }]}>Explore</Text>
-            <Text style={[styles.actionPillMuted, { color: colors.textMuted }]}>Campus</Text>
-          </Pressable>
+            color={glass.purple}
+          />
 
-          {/* 360° */}
-          <Pressable
-            style={[styles.actionPill, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+          <QuickActionPill
+            icon={<Ionicons name="image" size={22} color={glass.teal} />}
+            label="360°"
+            subLabel="Campus"
             onPress={() => open360Spot('loc_360_it204')}
-          >
-            <Ionicons name="image" size={22} color={colors.primary} />
-            <Text style={[styles.actionPillBold, { color: colors.text }]}>360°</Text>
-            <Text style={[styles.actionPillMuted, { color: colors.textMuted }]}>Campus</Text>
-          </Pressable>
+            color={glass.teal}
+          />
 
-          {/* Order */}
-          <Pressable
-            style={[styles.actionPill, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+          <QuickActionPill
+            icon={<Ionicons name="restaurant" size={22} color={glass.gold} />}
+            label="Order"
+            subLabel="Canteen"
             onPress={() => router.push('/(student)/canteen' as any)}
-          >
-            <Ionicons name="restaurant" size={22} color={colors.primary} />
-            <Text style={[styles.actionPillBold, { color: colors.text }]}>Order</Text>
-            <Text style={[styles.actionPillMuted, { color: colors.textMuted }]}>Canteen</Text>
-          </Pressable>
+            color={glass.gold}
+          />
 
-          {/* My Schedule */}
-          <Pressable
-            style={[styles.actionPill, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+          <QuickActionPill
+            icon={<Ionicons name="calendar" size={22} color={glass.info} />}
+            label="My"
+            subLabel="Schedule"
             onPress={() => router.push('/(student)/schedule' as any)}
-          >
-            <Ionicons name="calendar" size={22} color={colors.primary} />
-            <Text style={[styles.actionPillBold, { color: colors.text }]}>My</Text>
-            <Text style={[styles.actionPillMuted, { color: colors.textMuted }]}>Schedule</Text>
-          </Pressable>
+            color={glass.info}
+          />
         </View>
 
-        {/* NEXT UP SECTION */}
+        {/* LIVE CLASS SECTION */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Next up</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {isOngoing && <PulseDotHome color={branchColor} />}
+            <Text style={styles.sectionTitle}>
+              {liveClass ? (isOngoing ? 'Happening now' : 'Next up') : 'No classes'}
+            </Text>
+          </View>
           <Pressable onPress={() => router.push('/(student)/schedule' as any)}>
-            <Text style={styles.sectionLink}>View week</Text>
+            <Text style={styles.sectionLink}>Full schedule</Text>
           </Pressable>
         </View>
 
-        <View style={styles.nextUpCard}>
-          <View style={styles.nextUpTopRow}>
-            <View style={styles.timePill}>
-              <Text style={styles.timePillText}>NOW • IN 42 MIN</Text>
+        {liveClass ? (
+          <GlassCard variant={isOngoing ? 'hero' : 'elevated'} style={styles.nextUpCard}>
+            <View style={styles.nextUpTopRow}>
+              <View style={[styles.timePill, isOngoing && { backgroundColor: `${branchColor}20`, borderColor: `${branchColor}40` }]}>
+                <Text style={[styles.timePillText, isOngoing && { color: branchColor }]}>
+                  {isOngoing ? '🔴 LIVE NOW' : '⏱ COMING UP'} · {liveClass.startTime}
+                </Text>
+              </View>
+              <Pressable onPress={() => router.push('/(student)/schedule' as any)}>
+                <Ionicons name="arrow-forward-circle" size={22} color={isOngoing ? branchColor : glass.textMuted} />
+              </Pressable>
             </View>
-            <Ionicons name="ellipsis-horizontal" size={20} color={CampusTheme.colors.textMuted} />
-          </View>
 
-          <Text style={styles.classSubject}>{nextClass.subject}</Text>
+            <Text style={styles.classSubject}>{liveClass.subject}</Text>
+            {liveClass.subjectCode && (
+              <Text style={{ fontSize: 11, color: glass.textDim, fontWeight: '700', marginBottom: 8 }}>
+                {liveClass.subjectCode}
+              </Text>
+            )}
 
-          <View style={styles.classDetailsRow}>
-            <View style={styles.detailItem}>
-              <Ionicons name="location-outline" size={15} color={CampusTheme.colors.primary} />
-              <Text style={styles.detailText}>Room {nextClass.room}</Text>
+            <View style={styles.classDetailsRow}>
+              <View style={styles.detailItem}>
+                <Ionicons name="location-outline" size={15} color={isOngoing ? branchColor : glass.purple} />
+                <Text style={styles.detailText}>{liveClass.room}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Ionicons name="person-outline" size={15} color={isOngoing ? branchColor : glass.purple} />
+                <Text style={styles.detailText}>{liveClass.teacher}</Text>
+              </View>
             </View>
-            <View style={styles.detailItem}>
-              <Ionicons name="person-outline" size={15} color={CampusTheme.colors.primary} />
-              <Text style={styles.detailText}>{nextClass.facultyName}</Text>
-            </View>
-          </View>
 
-          <View style={styles.nextUpActionsRow}>
-            <Pressable
-              style={styles.primaryActionBtn}
-              onPress={() => open360Spot('loc_360_it204')}
+            <View style={styles.classDetailsRow}>
+              <View style={styles.detailItem}>
+                <Ionicons name="time-outline" size={15} color={glass.textMuted} />
+                <Text style={[styles.detailText, { color: glass.textMuted }]}>
+                  {liveClass.startTime} – {liveClass.endTime}
+                </Text>
+              </View>
+              {liveClass.type === 'lab' && (
+                <GlassBadge variant="teal" size="sm">🧪 LAB</GlassBadge>
+              )}
+            </View>
+
+            <View style={styles.nextUpActionsRow}>
+              <GlassButton
+                variant="primary"
+                size="md"
+                leftIcon={<Ionicons name="navigate" size={16} color={glass.text} />}
+                onPress={() => open360Spot('loc_360_it204')}
+              >
+                Navigate to {liveClass.room}
+              </GlassButton>
+
+              <GlassButton
+                variant="secondary"
+                size="md"
+                leftIcon={<Ionicons name="scan-outline" size={16} color={glass.purple} />}
+                onPress={() => open360Spot('loc_360_it204')}
+              >
+                360°
+              </GlassButton>
+            </View>
+          </GlassCard>
+        ) : (
+          <GlassCard variant="default" style={[styles.nextUpCard, { alignItems: 'center', paddingVertical: 32 }]}>
+            <Text style={{ fontSize: 36, marginBottom: 10 }}>🎉</Text>
+            <Text style={[styles.classSubject, { textAlign: 'center' }]}>All done for today!</Text>
+            <Text style={{ fontSize: 13, color: glass.textMuted, marginTop: 4 }}>No more classes scheduled.</Text>
+            <GlassButton
+              variant="primary"
+              size="md"
+              leftIcon={<Ionicons name="calendar" size={16} color={glass.text} />}
+              onPress={() => router.push('/(student)/schedule' as any)}
+              style={{ marginTop: 16, alignSelf: 'center' }}
             >
-              <Ionicons name="navigate" size={16} color={CampusTheme.colors.background} />
-              <Text style={styles.primaryActionBtnText}>Navigate to Room</Text>
-            </Pressable>
+              View Full Schedule
+            </GlassButton>
+          </GlassCard>
+        )}
 
-            <Pressable
-              style={styles.secondaryActionBtn}
-              onPress={() => open360Spot('loc_360_it204')}
-            >
-              <Ionicons name="scan-outline" size={16} color={CampusTheme.colors.primary} />
-              <Text style={styles.secondaryActionBtnText}>360°</Text>
-            </Pressable>
-          </View>
-        </View>
+        {/* UPCOMING CLASSES (next 2 after current) */}
+        {liveSchedule && liveSchedule.upcoming.length > (isOngoing ? 0 : 1) && (
+          <>
+            <View style={[styles.sectionHeaderRow, { marginTop: 8 }]}>
+              <Text style={styles.sectionTitle}>Coming up today</Text>
+            </View>
+            {(isOngoing ? liveSchedule.upcoming : liveSchedule.upcoming.slice(1)).slice(0, 3).map((cls) => (
+              <GlassCard key={`${cls.time}-${cls.subject}`} variant="default" style={styles.upcomingCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.upcomingSubject}>{cls.subject}</Text>
+                    <View style={{ flexDirection: 'row', gap: 14 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        <Ionicons name="location-outline" size={12} color={glass.purple} />
+                        <Text style={styles.upcomingMeta}>{cls.room}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        <Ionicons name="time-outline" size={12} color={glass.purple} />
+                        <Text style={styles.upcomingMeta}>{cls.startTime}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Text style={styles.upcomingTeacher}>{cls.teacherShort}</Text>
+                </View>
+              </GlassCard>
+            ))}
+          </>
+        )}
 
         {/* ACTIVE ORDER TRACKER CARD (if exists) */}
         {activeOrder && (
-          <View style={styles.orderTrackerCard}>
+          <GlassCard variant="elevated" style={styles.orderTrackerCard}>
             <View style={styles.orderHeaderRow}>
               <Text style={styles.orderNumberText}>{activeOrder.orderNumber}</Text>
-              <View
-                style={[
-                  styles.orderStatusBadge,
-                  activeOrder.orderStatus === 'ready' && styles.orderReadyBadge,
-                ]}
+              <GlassBadge
+                variant={activeOrder.orderStatus === 'ready' ? 'teal' : 'purple'}
+                size="md"
               >
-                <Text
-                  style={[
-                    styles.orderStatusBadgeText,
-                    activeOrder.orderStatus === 'ready' && styles.orderReadyBadgeText,
-                  ]}
-                >
-                  {activeOrder.orderStatus === 'ready' ? 'READY FOR PICKUP' : activeOrder.orderStatus.toUpperCase()}
-                </Text>
-              </View>
+                {activeOrder.orderStatus === 'ready' ? 'READY FOR PICKUP' : activeOrder.orderStatus.toUpperCase()}
+              </GlassBadge>
             </View>
 
             <Text style={styles.orderItemsSummary}>
@@ -279,7 +438,7 @@ export default function StudentHomeScreen() {
                   ]}
                 >
                   {getStepState(activeOrder.orderStatus, 'placed') ? (
-                    <Ionicons name="checkmark" size={12} color={CampusTheme.colors.background} />
+                    <Ionicons name="checkmark" size={12} color={glass.bg} />
                   ) : (
                     <View style={styles.stepDot} />
                   )}
@@ -403,7 +562,7 @@ export default function StudentHomeScreen() {
                 </View>
               )}
             </View>
-          </View>
+          </GlassCard>
         )}
 
         {/* CAMPUS UPDATES */}
@@ -421,11 +580,11 @@ export default function StudentHomeScreen() {
               style={styles.noticeCard}
               onPress={() => setSelectedNotice(notice)}
             >
-              <View style={styles.noticeIconBox}>
+              <View style={[styles.noticeIconBox, { backgroundColor: glass.purpleDim }]}>
                 <Ionicons
                   name={notice.category === 'Event' ? 'calendar' : 'notifications'}
                   size={20}
-                  color={CampusTheme.colors.primary}
+                  color={glass.purple}
                 />
               </View>
 
@@ -436,7 +595,7 @@ export default function StudentHomeScreen() {
                 </Text>
               </View>
 
-              <Ionicons name="chevron-forward" size={18} color={CampusTheme.colors.textMuted} />
+              <Ionicons name="chevron-forward" size={18} color={glass.textMuted} />
             </Pressable>
           ))}
         </View>
@@ -451,13 +610,11 @@ export default function StudentHomeScreen() {
           onRequestClose={() => setSelectedNotice(null)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
+            <GlassView variant="modal" style={styles.modalCard}>
               <View style={styles.modalHeader}>
-                <View style={styles.modalBadge}>
-                  <Text style={styles.modalBadgeText}>{selectedNotice.category}</Text>
-                </View>
+                <GlassBadge variant="purple" size="sm">{selectedNotice.category}</GlassBadge>
                 <Pressable onPress={() => setSelectedNotice(null)}>
-                  <Ionicons name="close-circle" size={26} color={CampusTheme.colors.textMuted} />
+                  <Ionicons name="close-circle" size={26} color={glass.textMuted} />
                 </Pressable>
               </View>
 
@@ -467,13 +624,15 @@ export default function StudentHomeScreen() {
               </Text>
               <Text style={styles.modalBody}>{selectedNotice.content}</Text>
 
-              <Pressable
-                style={styles.modalDismissBtn}
+              <GlassButton
+                variant="primary"
+                size="md"
                 onPress={() => setSelectedNotice(null)}
+                style={styles.modalDismissBtn}
               >
-                <Text style={styles.modalDismissBtnText}>Close Update</Text>
-              </Pressable>
-            </View>
+                Close Update
+              </GlassButton>
+            </GlassView>
           </View>
         </Modal>
       )}
@@ -492,16 +651,16 @@ export default function StudentHomeScreen() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#0A0010',
+    backgroundColor: Glass.bg,
   },
   container: {
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: Glass.space.md,
     paddingTop: 54,
     paddingBottom: 40,
-    maxWidth: 600,
+    maxWidth: Glass.maxContentWidth,
     alignSelf: 'center',
     width: '100%',
   },
@@ -509,340 +668,309 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: Glass.space.lg,
   },
   headerLeft: {
     flex: 1,
   },
   collegeTag: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#C4AAFF',
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
     letterSpacing: 1.2,
     marginBottom: 6,
   },
   greetingTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: Glass.fontSize.display,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
     letterSpacing: -0.5,
   },
   dateSubtitle: {
-    fontSize: 14,
-    color: CampusTheme.colors.textMuted,
+    fontSize: Glass.fontSize.md,
+    color: Glass.textMuted,
     marginTop: 4,
-    fontWeight: '500',
+    fontWeight: Glass.fontWeight.medium,
   },
   avatarCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(196,170,255,0.12)',
+    backgroundColor: Glass.purpleDim,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(196,170,255,0.5)',
-  },
-  avatarInitial: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#C4AAFF',
+    borderColor: Glass.borderPurple,
   },
   academicCard: {
-    backgroundColor: 'rgba(196,170,255,0.06)',
-    borderRadius: 20,
+    borderRadius: Glass.radius.xl,
     paddingVertical: 18,
-    paddingHorizontal: 20,
+    paddingHorizontal: Glass.space.md,
     borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.18)',
-    marginBottom: 22,
+    borderColor: Glass.borderPurple,
+    marginBottom: Glass.space.lg,
   },
   academicCollegeName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
     marginBottom: 6,
   },
   academicMeta: {
-    fontSize: 13,
-    color: '#C4AAFF',
-    fontWeight: '600',
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.semibold,
   },
   quickActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 28,
+    gap: Glass.space.sm,
+    marginBottom: Glass.space.xl,
   },
   actionPill: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 22,
-    paddingVertical: 16,
+    borderRadius: Glass.radius.xl,
+    paddingVertical: Glass.space.md,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.15)',
+    borderColor: Glass.border,
+    backgroundColor: Glass.bgCard,
+    gap: Glass.space.xs,
+  },
+  actionIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: Glass.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionPillBold: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginTop: 8,
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginTop: 4,
   },
   actionPillMuted: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.4)',
-    fontWeight: '500',
-    marginTop: 1,
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.medium,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: Glass.space.md,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: Glass.fontSize.xl,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
   sectionLink: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#C4AAFF',
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.bold,
+    color: Glass.purple,
   },
   nextUpCard: {
-    backgroundColor: 'rgba(196,170,255,0.07)',
-    borderRadius: 22,
-    padding: 20,
+    borderRadius: Glass.radius.xl,
+    padding: Glass.space.md,
     borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.2)',
-    marginBottom: 24,
+    borderColor: Glass.borderPurple,
+    marginBottom: Glass.space.lg,
   },
   nextUpTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Glass.space.md,
   },
   timePill: {
-    backgroundColor: 'rgba(196,170,255,0.15)',
-    borderRadius: 9999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: Glass.radius.pill,
+    paddingHorizontal: Glass.space.md,
+    paddingVertical: Glass.space.xs,
     borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.35)',
+    borderColor: Glass.borderPurple,
+    backgroundColor: Glass.purpleDim,
   },
   timePillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#C4AAFF',
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
     letterSpacing: 0.5,
   },
   classSubject: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 10,
+    fontSize: Glass.fontSize.xl,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: Glass.space.sm,
   },
   classDetailsRow: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 18,
+    gap: Glass.space.md,
+    marginBottom: Glass.space.md,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: Glass.space.xs,
   },
   detailText: {
-    fontSize: 13,
-    color: CampusTheme.colors.textMuted,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    fontWeight: Glass.fontWeight.semibold,
   },
   nextUpActionsRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: Glass.space.sm,
   },
-  primaryActionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#9B5CFF',
-    borderRadius: 14,
-    paddingVertical: 12,
+  upcomingCard: {
+    paddingVertical: 14,
+    marginBottom: Glass.space.md,
+    borderColor: Glass.borderSubtle,
   },
-  primaryActionBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
+  upcomingSubject: {
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: 4,
   },
-  secondaryActionBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: 'rgba(196,170,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.3)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  upcomingMeta: {
+    fontSize: Glass.fontSize.xs,
+    color: Glass.textMuted,
+    fontWeight: Glass.fontWeight.semibold,
   },
-  secondaryActionBtnText: {
-    color: '#C4AAFF',
-    fontSize: 13,
-    fontWeight: '800',
+  upcomingTeacher: {
+    fontSize: Glass.fontSize.xs,
+    color: Glass.purple,
+    fontWeight: Glass.fontWeight.extrabold,
   },
   orderTrackerCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 22,
-    padding: 20,
+    borderRadius: Glass.radius.xl,
+    padding: Glass.space.md,
     borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.15)',
-    marginBottom: 26,
+    borderColor: Glass.border,
+    marginBottom: Glass.space.xl,
   },
   orderHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: Glass.space.sm,
   },
   orderNumberText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
-  },
-  orderStatusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: CampusTheme.colors.pillInactiveBg,
-  },
-  orderReadyBadge: {
-    backgroundColor: CampusTheme.colors.primaryDim,
-  },
-  orderStatusBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: CampusTheme.colors.textMuted,
-  },
-  orderReadyBadgeText: {
-    color: CampusTheme.colors.primary,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
   orderItemsSummary: {
-    fontSize: 14,
-    color: CampusTheme.colors.textMuted,
-    marginBottom: 16,
-    fontWeight: '500',
+    fontSize: Glass.fontSize.md,
+    color: Glass.textMuted,
+    marginBottom: Glass.space.md,
+    fontWeight: Glass.fontWeight.medium,
   },
   stepperContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
-    paddingHorizontal: 6,
+    marginBottom: Glass.space.md,
+    paddingHorizontal: Glass.space.xs,
   },
   stepItem: {
     alignItems: 'center',
-    gap: 6,
+    gap: Glass.space.xs,
   },
   stepCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#1A2F25',
+    backgroundColor: Glass.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(142, 228, 175, 0.2)',
+    borderColor: Glass.border,
   },
   stepCircleActive: {
-    backgroundColor: CampusTheme.colors.primary,
-    borderColor: CampusTheme.colors.primary,
+    backgroundColor: Glass.purple,
+    borderColor: Glass.purple,
   },
   stepDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: CampusTheme.colors.textDim,
+    backgroundColor: Glass.textDim,
   },
   stepDotActive: {
-    backgroundColor: CampusTheme.colors.background,
+    backgroundColor: Glass.bg,
   },
   stepLine: {
     flex: 1,
     height: 2,
-    backgroundColor: '#1E3228',
-    marginHorizontal: 4,
+    backgroundColor: Glass.border,
+    marginHorizontal: Glass.space.xs,
     marginBottom: 18,
   },
   stepLineActive: {
-    backgroundColor: CampusTheme.colors.primary,
+    backgroundColor: Glass.purple,
   },
   stepLabel: {
-    fontSize: 11,
-    color: CampusTheme.colors.textDim,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.xs,
+    color: Glass.textDim,
+    fontWeight: Glass.fontWeight.semibold,
   },
   stepLabelActive: {
-    color: CampusTheme.colors.primary,
-    fontWeight: '700',
+    color: Glass.purple,
+    fontWeight: Glass.fontWeight.bold,
   },
   orderFooterRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-    paddingTop: 12,
+    borderTopColor: Glass.borderSubtle,
+    paddingTop: Glass.space.md,
   },
   orderFooterSubtext: {
-    fontSize: 12,
-    color: CampusTheme.colors.textMuted,
-    fontWeight: '500',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    fontWeight: Glass.fontWeight.medium,
   },
   otpBox: {
-    backgroundColor: '#1B3528',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    backgroundColor: Glass.bgElevated,
+    borderRadius: Glass.radius.md,
+    paddingHorizontal: Glass.space.md,
+    paddingVertical: Glass.space.xs,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: CampusTheme.colors.primary,
+    borderColor: Glass.purple,
   },
   otpLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: CampusTheme.colors.primary,
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
     letterSpacing: 0.5,
   },
   otpCode: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
     letterSpacing: 2,
   },
   noticesList: {
-    gap: 12,
+    gap: Glass.space.md,
   },
   noticeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 18,
-    padding: 16,
-    gap: 14,
+    backgroundColor: Glass.bgCard,
+    borderRadius: Glass.radius.lg,
+    padding: Glass.space.md,
+    gap: Glass.space.md,
     borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.12)',
+    borderColor: Glass.border,
   },
   noticeIconBox: {
     width: 44,
     height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(196,170,255,0.1)',
+    borderRadius: Glass.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -850,149 +978,59 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   noticeTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: CampusTheme.colors.text,
-    marginBottom: 4,
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.bold,
+    color: Glass.text,
+    marginBottom: Glass.space.xs,
   },
   noticeMeta: {
-    fontSize: 12,
-    color: CampusTheme.colors.textMuted,
-    fontWeight: '500',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    fontWeight: Glass.fontWeight.medium,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: Glass.space.md,
   },
   modalCard: {
-    backgroundColor: 'rgba(20,10,40,0.97)',
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: Glass.radius.xxl,
+    padding: Glass.space.lg,
     width: '100%',
     maxWidth: 440,
     borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.25)',
+    borderColor: Glass.borderStrong,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
-  },
-  modalBadge: {
-    backgroundColor: 'rgba(196,170,255,0.15)',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  modalBadgeText: {
-    color: '#C4AAFF',
-    fontSize: 11,
-    fontWeight: '700',
+    marginBottom: Glass.space.md,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
-    marginBottom: 8,
+    fontSize: Glass.fontSize.xl,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: Glass.space.sm,
   },
   modalDate: {
-    fontSize: 12,
-    color: CampusTheme.colors.textMuted,
-    marginBottom: 16,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginBottom: Glass.space.md,
   },
   modalBody: {
-    fontSize: 14,
-    color: CampusTheme.colors.textMuted,
-    lineHeight: 22,
-    marginBottom: 20,
+    fontSize: Glass.fontSize.md,
+    color: Glass.textMuted,
+    lineHeight: Glass.lineHeight.relaxed * Glass.fontSize.md,
+    marginBottom: Glass.space.lg,
   },
   modalDismissBtn: {
-    backgroundColor: '#9B5CFF',
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  modalDismissBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
+    marginTop: Glass.space.sm,
   },
   panoramaContainer: {
     flex: 1,
-    backgroundColor: '#0A0010',
-  },
-  panoramaHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 30,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  panoramaTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
-  },
-  panoramaSub: {
-    fontSize: 12,
-    color: CampusTheme.colors.textMuted,
-    marginTop: 2,
-  },
-  panoramaCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#192821',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  panoramaViewport: {
-    flex: 1,
-    backgroundColor: '#0F1A14',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  panoramaGridOverlay: {
-    alignItems: 'center',
-    padding: 30,
-    maxWidth: 400,
-  },
-  panoramaHintText: {
-    color: CampusTheme.colors.primary,
-    fontSize: 15,
-    fontWeight: '800',
-    marginTop: 16,
-    letterSpacing: 1,
-  },
-  panoramaDesc: {
-    color: CampusTheme.colors.textMuted,
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  panoramaActionRow: {
-    width: '100%',
-  },
-  openExternalBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#9B5CFF',
-    borderRadius: 14,
-    paddingVertical: 14,
-  },
-  openExternalBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
+    backgroundColor: Glass.bg,
   },
 });

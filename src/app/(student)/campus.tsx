@@ -11,12 +11,23 @@ import {
   Linking,
 } from 'react-native';
 
-import { CampusTheme } from '@/constants/theme';
+import { Glass } from '@/constants/glass-theme';
 import { useAuth } from '@/context/auth-context';
 import { DataService } from '@/services/data-service';
 import { SEED_360_LOCATIONS, SEED_ROOMS, SEED_FACULTY } from '@/services/seed-data';
 import { Room, Faculty, Campus360Location } from '@/types';
 import { Spatial360Viewer } from '@/components/spatial-360-viewer';
+import {
+  GlassCard,
+  GlassView,
+  GlassBadge,
+  GlassPill,
+  GlassButton,
+  GlassSearchBar,
+  GlassSectionHeader,
+  GlassDivider,
+  GlassModal,
+} from '@/components/ui/glass-components';
 
 export default function CampusScreen() {
   const { college } = useAuth();
@@ -74,6 +85,15 @@ export default function CampusScreen() {
     setSelected360Spot(target);
   };
 
+  const filteredRooms = rooms.filter((room) => {
+    if (activeFilter === 'All') return true;
+    if (activeFilter === 'Rooms') return room.type === 'Classroom';
+    if (activeFilter === 'Labs') return room.type === 'Lab';
+    if (activeFilter === 'Faculty') return false;
+    if (activeFilter === 'Departments') return room.department === searchQuery;
+    return true;
+  });
+
   return (
     <View style={styles.safeContainer}>
       <ScrollView
@@ -82,37 +102,21 @@ export default function CampusScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* HEADER */}
-        <Text style={styles.brandSubtitle}>CAMPUS CONNECT</Text>
-        <Text style={styles.mainTitle}>Find your place</Text>
-        <Text style={styles.taglineDesc}>
-          Search rooms, people, and campus corners.
-        </Text>
+        <GlassSectionHeader
+          title="Find your place"
+          subtitle="Search rooms, people, and campus corners."
+          style={{ marginBottom: Glass.space.lg }}
+        />
 
         {/* SEARCH BAR */}
-        <View style={styles.searchContainer}>
-          <Ionicons
-            name="search"
-            size={20}
-            color={CampusTheme.colors.textMuted}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder='Try "IT-204" or "library"'
-            placeholderTextColor={CampusTheme.colors.textDim}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery ? (
-            <Pressable onPress={() => setSearchQuery('')} style={styles.clearSearchBtn}>
-              <Ionicons name="close-circle" size={18} color={CampusTheme.colors.textMuted} />
-            </Pressable>
-          ) : (
-            <Pressable style={styles.filterBtn}>
-              <Ionicons name="options-outline" size={18} color={CampusTheme.colors.primary} />
-            </Pressable>
-          )}
-        </View>
+        <GlassSearchBar
+          placeholder='Try "IT-204" or "library"'
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onClear={() => setSearchQuery('')}
+          showFilter
+          onFilter={() => {}}
+        />
 
         {/* FILTER PILLS */}
         <ScrollView
@@ -124,78 +128,65 @@ export default function CampusScreen() {
           {filters.map((filter) => {
             const isActive = activeFilter === filter;
             return (
-              <Pressable
+              <GlassPill
                 key={filter}
-                style={[styles.filterPill, isActive && styles.activeFilterPill]}
+                selected={isActive}
+                variant="purple"
                 onPress={() => setActiveFilter(filter)}
               >
-                <Text
-                  style={[styles.filterPillText, isActive && styles.activeFilterPillText]}
-                >
-                  {filter}
-                </Text>
-              </Pressable>
+                {filter}
+              </GlassPill>
             );
           })}
         </ScrollView>
 
-        {/* HERO 360 CARD (Matches ui_ref2.png) */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.hero360Card,
-            pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] },
-          ]}
-          onPress={() => handleOpen360('loc_360_jspm_main')}
-          accessibilityRole="button"
-          accessibilityLabel="Explore JSPM in 360 degrees"
-        >
+        {/* HERO 360 CARD */}
+        <GlassCard variant="hero" style={styles.hero360Card} onPress={() => handleOpen360('loc_360_jspm_main')}>
           <View style={styles.hero360LeftIcon}>
-            <Ionicons name="image" size={26} color="#1A3326" />
+            <Ionicons name="image" size={28} color={Glass.text} />
           </View>
 
           <View style={styles.hero360Content}>
-            <Text style={styles.hero360Title}>
-              Explore JSPM in 360°
-            </Text>
-            <Text style={styles.hero360Subtitle}>
-              Look around before you even reach the room.
-            </Text>
+            <Text style={styles.hero360Title}>Explore JSPM in 360°</Text>
+            <Text style={styles.hero360Subtitle}>Look around before you even reach the room.</Text>
           </View>
 
           <View style={styles.hero360ArrowCircle}>
             <Ionicons
               name="arrow-up-outline"
               size={18}
-              color={CampusTheme.colors.primary}
+              color={Glass.purple}
               style={{ transform: [{ rotate: '45deg' }] }}
             />
           </View>
-        </Pressable>
+        </GlassCard>
 
         {/* POPULAR PLACES SECTION */}
-        <View style={styles.sectionTitleRow}>
-          <Text style={styles.sectionHeading}>Popular places</Text>
-          <Text style={styles.placesCount}>{rooms.length} venues</Text>
-        </View>
+        <GlassSectionHeader
+          title="Popular places"
+          subtitle={`${filteredRooms.length} venues`}
+          action={
+            <Text style={styles.sectionLink}>View all</Text>
+          }
+        />
 
         {/* PLACES LIST */}
         <View style={styles.placesList}>
-          {rooms.map((room) => (
-            <Pressable
+          {filteredRooms.map((room) => (
+            <GlassCard
               key={room.id}
+              variant="interactive"
               style={styles.roomCard}
               onPress={() => setSelectedRoom(room)}
             >
-              <View style={styles.roomIconWrapper}>
-                <Ionicons name="location" size={22} color={CampusTheme.colors.primary} />
+              <View style={[styles.roomIconWrapper, { backgroundColor: Glass.purpleDim }]}>
+                <Ionicons name="location" size={22} color={Glass.purple} />
               </View>
 
               <View style={styles.roomMainInfo}>
                 <View style={styles.roomHeaderRow}>
                   <Text style={styles.roomNumberTitle}>{room.name}</Text>
-                  <View style={styles.roomTypeTag}>
-                    <Text style={styles.roomTypeTagText}>{room.type}</Text>
-                  </View>
+                  <GlassBadge variant="purple" size="sm">{room.type}</GlassBadge>
                 </View>
 
                 <Text style={styles.roomBreadcrumb}>
@@ -209,30 +200,33 @@ export default function CampusScreen() {
                 {room.location360Id && (
                   <Pressable
                     style={styles.room360InlineBtn}
-                    onPress={() => handleOpen360(room.location360Id)}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleOpen360(room.location360Id!);
+                    }}
                   >
-                    <Ionicons name="scan" size={14} color={CampusTheme.colors.primary} />
+                    <Ionicons name="scan" size={14} color={Glass.purple} />
                     <Text style={styles.room360InlineText}>Open in 360°</Text>
                   </Pressable>
                 )}
               </View>
-            </Pressable>
+            </GlassCard>
           ))}
         </View>
 
-        {/* FACULTY DIRECTORY (shown if Faculty filter is active or searched) */}
+        {/* FACULTY DIRECTORY */}
         {(activeFilter === 'Faculty' || activeFilter === 'All') && faculty.length > 0 && (
-          <View style={styles.facultySection}>
-            <View style={styles.sectionTitleRow}>
-              <Text style={styles.sectionHeading}>Faculty directory</Text>
-              <Text style={styles.placesCount}>{faculty.length} professors</Text>
-            </View>
+          <>
+            <GlassSectionHeader
+              title="Faculty directory"
+              subtitle={`${faculty.length} professors`}
+            />
 
             <View style={styles.facultyList}>
               {faculty.map((fac) => (
-                <View key={fac.id} style={styles.facultyCard}>
-                  <View style={styles.facultyAvatarBox}>
-                    <Ionicons name="person" size={22} color={CampusTheme.colors.primary} />
+                <GlassCard key={fac.id} variant="default" style={styles.facultyCard}>
+                  <View style={[styles.facultyAvatarBox, { backgroundColor: Glass.purpleDim }]}>
+                    <Ionicons name="person" size={22} color={Glass.purple} />
                   </View>
                   <View style={styles.facultyInfo}>
                     <Text style={styles.facultyName}>{fac.name}</Text>
@@ -244,10 +238,10 @@ export default function CampusScreen() {
                     </Text>
                     <Text style={styles.facultyOffice}>Office: {fac.officeRoom}</Text>
                   </View>
-                </View>
+                </GlassCard>
               ))}
             </View>
-          </View>
+          </>
         )}
       </ScrollView>
 
@@ -260,81 +254,80 @@ export default function CampusScreen() {
       />
 
       {/* ROOM DETAIL MODAL */}
-      {selectedRoom && (
-        <Modal
-          visible={!!selectedRoom}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setSelectedRoom(null)}
-        >
-          <View style={styles.roomModalOverlay}>
-            <View style={styles.roomModalCard}>
-              <View style={styles.roomModalTop}>
-                <View style={styles.roomTypeTag}>
-                  <Text style={styles.roomTypeTagText}>{selectedRoom.type}</Text>
-                </View>
-                <Pressable onPress={() => setSelectedRoom(null)}>
-                  <Ionicons name="close-circle" size={24} color={CampusTheme.colors.textMuted} />
-                </Pressable>
-              </View>
+      <GlassModal
+        visible={!!selectedRoom}
+        onClose={() => setSelectedRoom(null)}
+        size="md"
+      >
+        {selectedRoom && (
+          <View style={styles.roomModalCard}>
+            <View style={styles.roomModalTop}>
+              <GlassBadge variant="purple" size="sm">{selectedRoom.type}</GlassBadge>
+              <Pressable onPress={() => setSelectedRoom(null)}>
+                <Ionicons name="close-circle" size={24} color={Glass.textMuted} />
+              </Pressable>
+            </View>
 
-              <Text style={styles.roomModalTitle}>{selectedRoom.name}</Text>
-              <Text style={styles.roomModalBreadcrumb}>
-                {selectedRoom.department} · {selectedRoom.buildingName} · {selectedRoom.floor}
-              </Text>
+            <Text style={styles.roomModalTitle}>{selectedRoom.name}</Text>
+            <Text style={styles.roomModalBreadcrumb}>
+              {selectedRoom.department} · {selectedRoom.buildingName} · {selectedRoom.floor}
+            </Text>
 
-              {selectedRoom.departmentTeacher ? (
-                <View style={{ marginVertical: 6, padding: 8, backgroundColor: '#13261C', borderRadius: 8 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#C4AAFF' }}>
-                    In-Charge: {selectedRoom.departmentTeacher}
-                  </Text>
-                  {selectedRoom.teacherPhone ? (
-                    <Text style={{ fontSize: 11, color: '#C4AAFF', marginTop: 2 }}>
-                      Mobile: {selectedRoom.teacherPhone}
-                    </Text>
-                  ) : null}
-                  {selectedRoom.teacherEmail ? (
-                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 1 }}>
-                      Email: {selectedRoom.teacherEmail}
-                    </Text>
-                  ) : null}
-                </View>
-              ) : null}
-
-              <Text style={styles.roomModalDesc}>{selectedRoom.description}</Text>
-
-              {selectedRoom.capacity && (
-                <Text style={styles.roomModalCapacity}>
-                  Seating Capacity: {selectedRoom.capacity} students
+            {selectedRoom.departmentTeacher ? (
+              <GlassView variant="subtle" style={styles.roomModalTeacher}>
+                <Text style={{ fontSize: Glass.fontSize.sm, fontWeight: Glass.fontWeight.extrabold, color: Glass.purple }}>
+                  In-Charge: {selectedRoom.departmentTeacher}
                 </Text>
+                {selectedRoom.teacherPhone ? (
+                  <Text style={{ fontSize: Glass.fontSize.xs, color: Glass.purple, marginTop: Glass.space.xs }}>
+                    Mobile: {selectedRoom.teacherPhone}
+                  </Text>
+                ) : null}
+                {selectedRoom.teacherEmail ? (
+                  <Text style={{ fontSize: Glass.fontSize.xs, color: Glass.textMuted, marginTop: 1 }}>
+                    Email: {selectedRoom.teacherEmail}
+                  </Text>
+                ) : null}
+              </GlassView>
+            ) : null}
+
+            <Text style={styles.roomModalDesc}>{selectedRoom.description}</Text>
+
+            {selectedRoom.capacity && (
+              <Text style={styles.roomModalCapacity}>
+                Seating Capacity: {selectedRoom.capacity} students
+              </Text>
+            )}
+
+            <View style={styles.roomModalActions}>
+              {selectedRoom.location360Id && (
+                <GlassButton
+                  variant="primary"
+                  size="md"
+                  leftIcon={<Ionicons name="scan" size={16} color={Glass.text} />}
+                  onPress={() => {
+                    const spotId = selectedRoom.location360Id!;
+                    setSelectedRoom(null);
+                    handleOpen360(spotId);
+                  }}
+                  style={styles.roomModal360Btn}
+                >
+                  Open in 360°
+                </GlassButton>
               )}
 
-              <View style={styles.roomModalActions}>
-                {selectedRoom.location360Id && (
-                  <Pressable
-                    style={styles.roomModal360Btn}
-                    onPress={() => {
-                      const spotId = selectedRoom.location360Id;
-                      setSelectedRoom(null);
-                      handleOpen360(spotId);
-                    }}
-                  >
-                    <Ionicons name="scan" size={16} color={CampusTheme.colors.background} />
-                    <Text style={styles.roomModal360BtnText}>Open in 360°</Text>
-                  </Pressable>
-                )}
-
-                <Pressable
-                  style={styles.roomModalDismiss}
-                  onPress={() => setSelectedRoom(null)}
-                >
-                  <Text style={styles.roomModalDismissText}>Close</Text>
-                </Pressable>
-              </View>
+              <GlassButton
+                variant="ghost"
+                size="md"
+                onPress={() => setSelectedRoom(null)}
+                style={styles.roomModalDismiss}
+              >
+                Close
+              </GlassButton>
             </View>
           </View>
-        </Modal>
-      )}
+        )}
+      </GlassModal>
     </View>
   );
 }
@@ -342,108 +335,39 @@ export default function CampusScreen() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#0A0010',
+    backgroundColor: Glass.bg,
   },
   container: {
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: Glass.space.md,
     paddingTop: 54,
-    paddingBottom: 40,
-    maxWidth: 600,
+    paddingBottom: Glass.space.xl,
+    maxWidth: Glass.maxContentWidth,
     alignSelf: 'center',
     width: '100%',
   },
-  brandSubtitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#C4AAFF',
-    letterSpacing: 1.2,
-    marginBottom: 6,
-  },
-  mainTitle: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  taglineDesc: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 4,
-    marginBottom: 20,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(196,170,255,0.06)',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.15)',
-    paddingHorizontal: 16,
-    height: 54,
-    marginBottom: 16,
-    ...CampusTheme.shadows.card,
-  },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 15,
-  },
-  clearSearchBtn: {
-    padding: 4,
-  },
-  filterBtn: {
-    padding: 4,
-  },
   filterScrollView: {
-    marginBottom: 22,
+    marginBottom: Glass.space.lg,
   },
   filterScroll: {
-    gap: 8,
-    paddingRight: 10,
-  },
-  filterPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 9999,
-    backgroundColor: 'rgba(196,170,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.1)',
-  },
-  activeFilterPill: {
-    backgroundColor: '#9B5CFF',
-    bordercolor: '#C4AAFF',
-  },
-  filterPillText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.45)',
-  },
-  activeFilterPillText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
+    gap: Glass.space.sm,
+    paddingRight: Glass.space.md,
   },
   hero360Card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#C4AAFF',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 28,
-    gap: 14,
-    cursor: 'pointer' as any,
-    ...CampusTheme.shadows.glow,
+    borderRadius: Glass.radius.xl,
+    padding: Glass.space.md,
+    marginBottom: Glass.space.xl,
+    gap: Glass.space.md,
   },
   hero360LeftIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#68C390',
+    width: 56,
+    height: 56,
+    borderRadius: Glass.radius.lg,
+    backgroundColor: Glass.purpleBright,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -451,60 +375,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   hero360Title: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: Glass.space.xs,
   },
   hero360Subtitle: {
-    fontSize: 12,
-    color: '#1E3A2B',
-    fontWeight: '600',
-    lineHeight: 16,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textSub,
+    fontWeight: Glass.fontWeight.medium,
+    lineHeight: Glass.lineHeight.normal * Glass.fontSize.sm,
   },
   hero360ArrowCircle: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundcolor: '#FFFFFF',
+    borderRadius: Glass.radius.circle,
+    backgroundColor: Glass.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  sectionHeading: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  placesCount: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
-    fontWeight: '600',
-  },
   placesList: {
-    gap: 14,
-    marginBottom: 26,
+    gap: Glass.space.md,
+    marginBottom: Glass.space.xl,
   },
   roomCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(196,170,255,0.06)',
-    borderRadius: 22,
-    padding: 18,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.15)',
-    ...CampusTheme.shadows.card,
+    padding: Glass.space.md,
+    gap: Glass.space.md,
   },
   roomIconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(196,170,255,0.1)',
+    width: 48,
+    height: 48,
+    borderRadius: Glass.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -515,74 +417,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: Glass.space.xs,
   },
   roomNumberTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  roomTypeTag: {
-    backgroundColor: '#1C3528',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.15)',
-  },
-  roomTypeTagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#C4AAFF',
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
   roomBreadcrumb: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
-    marginBottom: 8,
-    fontWeight: '500',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginBottom: Glass.space.sm,
+    fontWeight: Glass.fontWeight.medium,
   },
   roomDescription: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.45)',
-    lineHeight: 18,
+    fontSize: Glass.fontSize.md,
+    color: Glass.textMuted,
+    lineHeight: Glass.lineHeight.normal * Glass.fontSize.md,
   },
   room360InlineBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
+    gap: Glass.space.xs,
+    marginTop: Glass.space.sm,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(196,170,255,0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    cursor: 'pointer' as any,
+    paddingHorizontal: Glass.space.sm,
+    paddingVertical: Glass.space.xs,
+    borderRadius: Glass.radius.sm,
   },
   room360InlineText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#C4AAFF',
-  },
-  facultySection: {
-    marginTop: 10,
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
   },
   facultyList: {
-    gap: 12,
+    gap: Glass.space.md,
   },
   facultyCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(196,170,255,0.06)',
-    borderRadius: 18,
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.12)',
+    padding: Glass.space.md,
+    gap: Glass.space.md,
   },
   facultyAvatarBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(196,170,255,0.1)',
+    width: 48,
+    height: 48,
+    borderRadius: Glass.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -590,167 +469,68 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   facultyName: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
   facultyRole: {
-    fontSize: 12,
-    color: '#C4AAFF',
-    marginTop: 2,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.purple,
+    marginTop: Glass.space.xs,
+    fontWeight: Glass.fontWeight.semibold,
   },
   facultySubjects: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 4,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginTop: Glass.space.xs,
   },
   facultyOffice: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.3)',
-    marginTop: 2,
-  },
-  modal360Container: {
-    flex: 1,
-    backgroundColor: '#0A0010',
-  },
-  modal360Header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 30,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  modal360Title: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  modal360Floor: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 2,
-  },
-  modal360CloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1A2A22',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modal360Viewport: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0D0018',
-  },
-  modal360Center: {
-    alignItems: 'center',
-    padding: 30,
-    maxWidth: 420,
-  },
-  modal360Prompt: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#C4AAFF',
-    marginTop: 16,
-    letterSpacing: 1,
-  },
-  modal360Desc: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.45)',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  externalLaunchBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#9B5CFF',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-  },
-  externalLaunchBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  roomModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    fontSize: Glass.fontSize.xs,
+    color: Glass.textDim,
+    marginTop: Glass.space.xs,
   },
   roomModalCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 22,
-    padding: 24,
-    width: '100%',
-    maxWidth: 440,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.15)',
+    padding: Glass.space.lg,
   },
   roomModalTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Glass.space.md,
   },
   roomModalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 6,
+    fontSize: Glass.fontSize.xl,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: Glass.space.sm,
   },
   roomModalBreadcrumb: {
-    fontSize: 13,
-    color: '#C4AAFF',
-    marginBottom: 12,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.md,
+    color: Glass.purple,
+    marginBottom: Glass.space.md,
+    fontWeight: Glass.fontWeight.semibold,
+  },
+  roomModalTeacher: {
+    marginVertical: Glass.space.md,
   },
   roomModalDesc: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.45)',
-    lineHeight: 20,
-    marginBottom: 14,
+    fontSize: Glass.fontSize.md,
+    color: Glass.textMuted,
+    lineHeight: Glass.lineHeight.relaxed * Glass.fontSize.md,
+    marginBottom: Glass.space.md,
   },
   roomModalCapacity: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.3)',
-    marginBottom: 20,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textDim,
+    marginBottom: Glass.space.xl,
   },
   roomModalActions: {
-    gap: 10,
+    gap: Glass.space.sm,
   },
   roomModal360Btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#9B5CFF',
-    borderRadius: 12,
-    paddingVertical: 12,
-  },
-  roomModal360BtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
+    width: '100%',
   },
   roomModalDismiss: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  roomModalDismissText: {
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 14,
-    fontWeight: '600',
+    width: '100%',
   },
 });

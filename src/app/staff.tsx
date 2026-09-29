@@ -3,10 +3,11 @@ import { useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, Platform } from 'react-native';
 
-import { CampusTheme } from '@/constants/theme';
+import { Glass } from '@/constants/glass-theme';
 import { useAuth } from '@/context/auth-context';
 import { DataService } from '@/services/data-service';
 import { TimetableSlot, Notice } from '@/types';
+import { GlassCard, GlassView, GlassBadge, GlassButton } from '@/components/ui/glass-components';
 
 export default function TeacherStaffScreen() {
   const router = useRouter();
@@ -46,11 +47,11 @@ export default function TeacherStaffScreen() {
   return (
     <View style={styles.safeContainer}>
       {/* HEADER */}
-      <View style={styles.header}>
+      <GlassView variant="default" style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.badge}>
-            <Ionicons name="school" size={18} color={CampusTheme.colors.background} />
-          </View>
+          <GlassView variant="default" style={styles.badge}>
+            <Ionicons name="school" size={18} color={Glass.text} />
+          </GlassView>
           <View>
             <Text style={styles.headerTitle}>FACULTY PORTAL</Text>
             <Text style={styles.headerSub}>
@@ -60,37 +61,46 @@ export default function TeacherStaffScreen() {
         </View>
 
         <View style={styles.headerRight}>
-          <Pressable style={styles.portalBtn} onPress={() => router.replace('/login')}>
-            <Ionicons name="swap-horizontal" size={15} color={CampusTheme.colors.primary} />
-            <Text style={styles.portalBtnText}>Switch</Text>
-          </Pressable>
-          <Pressable style={styles.logoutBtn} onPress={logout}>
-            <Ionicons name="log-out-outline" size={18} color={CampusTheme.colors.danger} />
-          </Pressable>
+          <GlassButton
+            variant="ghost"
+            size="sm"
+            leftIcon={<Ionicons name="swap-horizontal" size={15} color={Glass.purple} />}
+            onPress={() => router.replace('/login')}
+          >
+            Switch
+          </GlassButton>
+          <GlassButton
+            variant="danger"
+            size="sm"
+            leftIcon={<Ionicons name="log-out-outline" size={18} color={Glass.text} />}
+            onPress={logout}
+          >
+            Sign Out
+          </GlassButton>
         </View>
-      </View>
+      </GlassView>
 
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         {/* Class Teacher Announcement Box */}
         {profile?.isClassTeacher && (
-          <View style={styles.classTeacherCard}>
-            <Ionicons name="ribbon" size={24} color={CampusTheme.colors.primary} />
+          <GlassCard variant="hero" style={styles.classTeacherCard}>
+            <Ionicons name="ribbon" size={24} color={Glass.purple} />
             <View style={styles.classTeacherInfo}>
               <Text style={styles.classTeacherTitle}>Class Teacher Assignment</Text>
               <Text style={styles.classTeacherSub}>
                 3rd Year · Division A ({profile?.department})
               </Text>
             </View>
-          </View>
+          </GlassCard>
         )}
 
         {/* Delegated Field Admin Powers Banner */}
         {profile?.permissions && profile.permissions.length > 0 && (
-          <View style={styles.delegatedPowersCard}>
+          <GlassCard variant="hero" style={styles.delegatedPowersCard}>
             <View style={styles.delegatedTopRow}>
-              <View style={styles.delegatedBadge}>
-                <Ionicons name="shield-checkmark" size={18} color="#0D1411" />
-              </View>
+              <GlassView variant="default" style={styles.delegatedBadge}>
+                <Ionicons name="shield-checkmark" size={18} color={Glass.bg} />
+              </GlassView>
               <View style={{ flex: 1 }}>
                 <Text style={styles.delegatedTitle}>Delegated Administrative Powers</Text>
                 <Text style={styles.delegatedSub}>
@@ -101,36 +111,42 @@ export default function TeacherStaffScreen() {
 
             <View style={styles.delegatedButtonsRow}>
               {profile.permissions.includes('canteen_manager') && (
-                <Pressable
-                  style={styles.delegatedActionBtn}
+                <GlassButton
+                  variant="primary"
+                  size="md"
+                  leftIcon={<Ionicons name="fast-food" size={14} color={Glass.bg} />}
                   onPress={() => router.push('/food-court')}
+                  style={styles.delegatedActionBtn}
                 >
-                  <Ionicons name="fast-food" size={14} color="#0D1411" />
-                  <Text style={styles.delegatedActionBtnText}>Manage Canteen & Menu</Text>
-                </Pressable>
+                  Manage Canteen & Menu
+                </GlassButton>
               )}
 
               {profile.permissions.includes('tour_360_curator') && (
-                <Pressable
-                  style={styles.delegatedActionBtn}
+                <GlassButton
+                  variant="primary"
+                  size="md"
+                  leftIcon={<Ionicons name="scan" size={14} color={Glass.bg} />}
                   onPress={() => router.push('/admin')}
+                  style={styles.delegatedActionBtn}
                 >
-                  <Ionicons name="scan" size={14} color="#0D1411" />
-                  <Text style={styles.delegatedActionBtnText}>Upload & Curate 360° Tours</Text>
-                </Pressable>
+                  Upload & Curate 360° Tours
+                </GlassButton>
               )}
 
               {profile.permissions.includes('notices_publisher') && (
-                <Pressable
-                  style={styles.delegatedActionBtn}
+                <GlassButton
+                  variant="primary"
+                  size="md"
+                  leftIcon={<Ionicons name="megaphone" size={14} color={Glass.bg} />}
                   onPress={() => router.push('/admin')}
+                  style={styles.delegatedActionBtn}
                 >
-                  <Ionicons name="megaphone" size={14} color="#0D1411" />
-                  <Text style={styles.delegatedActionBtnText}>Publish Institutional Notice</Text>
-                </Pressable>
+                  Publish Institutional Notice
+                </GlassButton>
               )}
             </View>
-          </View>
+          </GlassCard>
         )}
 
         {/* MY TIMETABLE */}
@@ -139,47 +155,47 @@ export default function TeacherStaffScreen() {
 
         <View style={styles.slotsList}>
           {timetable.map((slot) => (
-            <View key={slot.id} style={styles.slotCard}>
+            <GlassCard key={slot.id} variant="interactive" style={styles.slotCard}>
               <View style={styles.slotTop}>
-                <View style={styles.timeBadge}>
-                  <Ionicons name="time" size={12} color={CampusTheme.colors.primary} />
+                <GlassView variant="subtle" style={styles.timeBadge}>
+                  <Ionicons name="time" size={12} color={Glass.purple} />
                   <Text style={styles.timeBadgeText}>
                     {slot.startTime} – {slot.endTime}
                   </Text>
-                </View>
-                <Text style={styles.dayText}>{slot.dayName}</Text>
+                </GlassView>
+                <GlassBadge variant="purple" size="sm">{slot.dayName}</GlassBadge>
               </View>
 
               <Text style={styles.subjectText}>{slot.subject}</Text>
 
               <View style={styles.slotBottom}>
                 <View style={styles.metaRow}>
-                  <Ionicons name="location" size={14} color={CampusTheme.colors.primary} />
+                  <Ionicons name="location" size={14} color={Glass.purple} />
                   <Text style={styles.metaText}>Room {slot.room}</Text>
                 </View>
 
                 <View style={styles.metaRow}>
-                  <Ionicons name="people" size={14} color={CampusTheme.colors.primary} />
+                  <Ionicons name="people" size={14} color={Glass.purple} />
                   <Text style={styles.metaText}>
                     {slot.year} · {slot.division}
                   </Text>
                 </View>
               </View>
-            </View>
+            </GlassCard>
           ))}
         </View>
 
         {/* FACULTY NOTICES */}
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Departmental Notices</Text>
+        <Text style={[styles.sectionTitle, { marginTop: Glass.space.xl }]}>Departmental Notices</Text>
         <View style={styles.noticesList}>
           {notices.map((n) => (
-            <View key={n.id} style={styles.noticeCard}>
+            <GlassCard key={n.id} variant="default" style={styles.noticeCard}>
               <Text style={styles.noticeTitle}>{n.title}</Text>
               <Text style={styles.noticeMeta}>
                 {n.category} • {n.timeAgo}
               </Text>
               <Text style={styles.noticeSummary}>{n.summary}</Text>
-            </View>
+            </GlassCard>
           ))}
         </View>
       </ScrollView>
@@ -190,246 +206,188 @@ export default function TeacherStaffScreen() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: CampusTheme.colors.background,
+    backgroundColor: Glass.bg,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: Glass.space.md,
     paddingTop: 50,
-    paddingBottom: 16,
-    backgroundColor: '#0E1713',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(142, 228, 175, 0.12)',
+    paddingBottom: Glass.space.md,
+    marginBottom: Glass.space.md,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: Glass.space.md,
   },
   badge: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#60A5FA',
+    width: 44,
+    height: 44,
+    borderRadius: Glass.radius.md,
+    backgroundColor: Glass.purpleBright,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
-    letterSpacing: 0.5,
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
+    letterSpacing: 1,
   },
   headerSub: {
-    fontSize: 11,
-    color: CampusTheme.colors.textMuted,
+    fontSize: Glass.fontSize.md,
+    color: Glass.textSub,
     marginTop: 1,
+    fontWeight: Glass.fontWeight.medium,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  portalBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#162820',
-    borderWidth: 1,
-    borderColor: 'rgba(142, 228, 175, 0.2)',
-  },
-  portalBtnText: {
-    color: CampusTheme.colors.primary,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  logoutBtn: {
-    padding: 6,
+    gap: Glass.space.sm,
   },
   container: {
     flex: 1,
   },
   contentContainer: {
-    padding: 18,
-    paddingBottom: 40,
-    maxWidth: 680,
+    paddingHorizontal: Glass.space.md,
+    paddingBottom: Glass.space.xl,
+    maxWidth: Glass.maxContentWidth,
     alignSelf: 'center',
     width: '100%',
   },
   classTeacherCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#162820',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: CampusTheme.colors.primary,
-    marginBottom: 20,
+    gap: Glass.space.md,
+    padding: Glass.space.md,
+    marginBottom: Glass.space.lg,
   },
   classTeacherInfo: {
     flex: 1,
   },
   classTeacherTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
   classTeacherSub: {
-    fontSize: 12,
-    color: CampusTheme.colors.primary,
-    marginTop: 2,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginTop: Glass.space.xs,
+  },
+  delegatedPowersCard: {
+    padding: Glass.space.md,
+    marginBottom: Glass.space.xl,
+  },
+  delegatedTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Glass.space.md,
+    marginBottom: Glass.space.md,
+  },
+  delegatedBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: Glass.radius.md,
+    backgroundColor: Glass.purpleBright,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  delegatedTitle: {
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+  },
+  delegatedSub: {
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginTop: Glass.space.xs,
+  },
+  delegatedButtonsRow: {
+    gap: Glass.space.sm,
+  },
+  delegatedActionBtn: {
+    flex: 1,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: Glass.space.xs,
   },
   sectionSub: {
-    fontSize: 13,
-    color: CampusTheme.colors.textMuted,
-    marginTop: 2,
-    marginBottom: 16,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginBottom: Glass.space.md,
   },
   slotsList: {
-    gap: 12,
+    gap: Glass.space.md,
+    marginBottom: Glass.space.xl,
   },
   slotCard: {
-    backgroundColor: '#15251E',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(142, 228, 175, 0.15)',
-    ...CampusTheme.shadows.card,
+    padding: Glass.space.md,
   },
   slotTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: Glass.space.sm,
   },
   timeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#1C3528',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    gap: Glass.space.xs,
+    paddingHorizontal: Glass.space.sm,
+    paddingVertical: Glass.space.xs,
+    borderRadius: Glass.radius.sm,
   },
   timeBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: CampusTheme.colors.primary,
-  },
-  dayText: {
-    fontSize: 12,
-    color: CampusTheme.colors.textMuted,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.bold,
+    color: Glass.purple,
   },
   subjectText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
-    marginBottom: 10,
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: Glass.space.md,
   },
   slotBottom: {
     flexDirection: 'row',
-    gap: 16,
+    gap: Glass.space.lg,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: Glass.space.xs,
   },
   metaText: {
-    fontSize: 12,
-    color: CampusTheme.colors.textMuted,
-    fontWeight: '500',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    fontWeight: Glass.fontWeight.medium,
   },
   noticesList: {
-    gap: 10,
+    gap: Glass.space.md,
   },
   noticeCard: {
-    backgroundColor: '#15251E',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(142, 228, 175, 0.1)',
+    padding: Glass.space.md,
   },
   noticeTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: CampusTheme.colors.text,
-    marginBottom: 2,
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: Glass.space.xs,
   },
   noticeMeta: {
-    fontSize: 11,
-    color: CampusTheme.colors.primary,
-    marginBottom: 6,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginBottom: Glass.space.xs,
   },
   noticeSummary: {
-    fontSize: 12,
-    color: CampusTheme.colors.textMuted,
-    lineHeight: 16,
-  },
-
-  // DELEGATED POWERS BANNER
-  delegatedPowersCard: {
-    backgroundColor: '#12231A',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(142, 228, 175, 0.25)',
-  },
-  delegatedTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  delegatedBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: CampusTheme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  delegatedTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
-  },
-  delegatedSub: {
-    fontSize: 11,
-    color: CampusTheme.colors.textMuted,
-    marginTop: 2,
-  },
-  delegatedButtonsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  delegatedActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: CampusTheme.colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  delegatedActionBtnText: {
-    color: '#0D1411',
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textSub,
+    lineHeight: Glass.lineHeight.normal * Glass.fontSize.sm,
   },
 });

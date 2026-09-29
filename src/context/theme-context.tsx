@@ -2,18 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 
-import {
-  CampusTheme,
-  DarkThemeColors,
-  LightThemeColors,
-} from '@/constants/theme';
+import { Glass } from '@/constants/glass-theme';
 
-export type ThemeMode = 'dark' | 'light';
+export type ThemeMode = 'dark'; // Glass theme is dark-only
 
-interface ThemeContextType {
+export interface ThemeContextType {
   theme: ThemeMode;
   isDark: boolean;
-  colors: typeof DarkThemeColors;
+  colors: typeof Glass;
+  glass: typeof Glass;
   toggleTheme: () => void;
   setTheme: (mode: ThemeMode) => void;
 }
@@ -23,7 +20,8 @@ const STORAGE_KEY = 'cc_theme_mode';
 const ThemeContext = createContext<ThemeContextType>({
   theme: 'dark',
   isDark: true,
-  colors: DarkThemeColors,
+  colors: Glass,
+  glass: Glass,
   toggleTheme: () => {},
   setTheme: () => {},
 });
@@ -42,7 +40,7 @@ export function AppThemeProvider({ children }: { children: React.ReactNode }) {
           saved = await AsyncStorage.getItem(STORAGE_KEY);
         }
 
-        if (saved === 'light' || saved === 'dark') {
+        if (saved === 'dark') {
           applyTheme(saved as ThemeMode);
         }
       } catch (e) {
@@ -54,27 +52,15 @@ export function AppThemeProvider({ children }: { children: React.ReactNode }) {
   const applyTheme = (mode: ThemeMode) => {
     setThemeState(mode);
 
-    // Update CampusTheme colors object in place for backward compatibility
-    const targetColors = mode === 'light' ? LightThemeColors : DarkThemeColors;
-    Object.assign(CampusTheme.colors, targetColors);
-
     // Apply HTML classes on web
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       const root = document.documentElement;
       const body = document.body;
-      if (mode === 'light') {
-        root.classList.add('light-theme');
-        root.classList.remove('dark-theme');
-        body.classList.add('light-theme');
-        body.classList.remove('dark-theme');
-        root.setAttribute('data-theme', 'light');
-      } else {
-        root.classList.add('dark-theme');
-        root.classList.remove('light-theme');
-        body.classList.add('dark-theme');
-        body.classList.remove('light-theme');
-        root.setAttribute('data-theme', 'dark');
-      }
+      root.classList.add('dark-theme');
+      root.classList.remove('light-theme');
+      body.classList.add('dark-theme');
+      body.classList.remove('light-theme');
+      root.setAttribute('data-theme', 'dark');
     }
   };
 
@@ -89,19 +75,19 @@ export function AppThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
+    // Glass theme is dark-only, but keep the function for compatibility
+    setTheme('dark');
   };
 
-  const isDark = theme === 'dark';
-  const colors = isDark ? DarkThemeColors : LightThemeColors;
+  const isDark = true; // Glass theme is always dark
 
   return (
     <ThemeContext.Provider
       value={{
         theme,
         isDark,
-        colors,
+        colors: Glass,
+        glass: Glass,
         toggleTheme,
         setTheme,
       }}

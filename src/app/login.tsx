@@ -1,19 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Animated,
-  Easing,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  ActivityIndicator,
-  Dimensions,
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    Easing,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 
 import { useAuth } from '@/context/auth-context';
@@ -151,12 +151,11 @@ function GlassInput({
 // ─── Main Login Screen ────────────────────────────────────────────────────────
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   // Card entrance animation
@@ -201,20 +200,6 @@ export default function LoginScreen() {
       if (msg) setErrorMsg(msg);
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleGoogle = async () => {
-    setErrorMsg('');
-    try {
-      setGoogleLoading(true);
-      await loginWithGoogle();
-      router.replace('/' as any);
-    } catch (err: any) {
-      const msg = getFriendlyError(err);
-      if (msg) setErrorMsg(msg);
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
@@ -265,14 +250,6 @@ export default function LoginScreen() {
             ]}
           >
             <View style={styles.glassCardInner}>
-
-              {/* Title */}
-              <Text style={styles.cardTitle}>Welcome Back</Text>
-              <Text style={styles.cardSubtitle}>
-                Sign in with your email, student ID, or institutional credentials.{'\n'}
-                The system will identify your role automatically.
-              </Text>
-
               {/* Error */}
               {!!errorMsg && (
                 <View style={styles.errorBanner}>
@@ -280,39 +257,16 @@ export default function LoginScreen() {
                 </View>
               )}
 
-              {/* Google */}
-              <Pressable
-                style={({ pressed }) => [styles.googleBtn, pressed && { opacity: 0.8 }]}
-                onPress={handleGoogle}
-                disabled={submitting || googleLoading}
-              >
-                {googleLoading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <View style={styles.googleIconBox}>
-                      <Ionicons name="logo-google" size={16} color="#EA4335" />
-                    </View>
-                    <Text style={styles.googleBtnText}>Continue with Google</Text>
-                  </>
-                )}
-              </Pressable>
-
-              {/* Divider */}
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerLabel}>or sign in with credentials</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
               {/* Identifier input */}
               <GlassInput
                 icon="person-outline"
-                placeholder="Email, student ID, or username"
+                placeholder="PRN, email, student ID, or username"
                 value={identifier}
                 onChangeText={setIdentifier}
                 keyboardType="email-address"
               />
+
+              <Text style={styles.helperText}>Use a PRN like RBT26IT18 to auto-detect your section and timetable.</Text>
 
               {/* Password */}
               <GlassInput
@@ -327,7 +281,7 @@ export default function LoginScreen() {
               <Pressable
                 style={({ pressed }) => [styles.signInBtn, (submitting || pressed) && { opacity: 0.85 }]}
                 onPress={handleLogin}
-                disabled={submitting || googleLoading}
+                disabled={submitting}
               >
                 {submitting ? (
                   <ActivityIndicator color="#fff" />
@@ -339,20 +293,8 @@ export default function LoginScreen() {
                 )}
               </Pressable>
 
-              {/* Smart role hint */}
-              <View style={styles.infoBox}>
-                <Ionicons name="sparkles" size={15} color="#C4AAFF" />
-                <Text style={styles.infoText}>
-                  Your role is detected automatically — students, faculty, college admins, and super admin all use this same login.
-                </Text>
-              </View>
-
             </View>
           </Animated.View>
-
-          <Animated.Text style={[styles.versionText, { opacity: cardAnim }]}>
-            Campus Connect v1.0 · Secured by Firebase
-          </Animated.Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -446,19 +388,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.14)',
     padding: 28,
   },
-  cardTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    letterSpacing: -0.3,
-  },
-  cardSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.42)',
-    marginBottom: 24,
-    lineHeight: 19,
-  },
   // Error
   errorBanner: {
     backgroundColor: 'rgba(255,80,80,0.12)',
@@ -474,53 +403,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '500',
-  },
-  // Google
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.09)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  googleIconBox: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleBtnText: {
-    color: 'rgba(255,255,255,0.88)',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  // Divider
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  dividerLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.3)',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
   },
   // Glass Input
   glassInputWrap: {
@@ -540,6 +422,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     paddingVertical: Platform.OS === 'android' ? 12 : 0,
   },
+  helperText: {
+    color: 'rgba(196,170,255,0.72)',
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 14,
+    marginTop: -4,
+  },
   // Sign In Button
   signInBtn: {
     flexDirection: 'row',
@@ -551,7 +440,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     ...Platform.select({
       web: {
-        background: 'linear-gradient(135deg, #9B5CFF 0%, #FF4BA6 100%)',
+        backgroundImage: 'linear-gradient(135deg, #9B5CFF 0%, #FF4BA6 100%)',
         boxShadow: '0 8px 32px rgba(155,92,255,0.45)',
       } as any,
       default: {
@@ -569,31 +458,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.4,
-  },
-  // Info box
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    backgroundColor: 'rgba(196,170,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.18)',
-    borderRadius: 12,
-    padding: 12,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 12,
-    color: 'rgba(196,170,255,0.7)',
-    lineHeight: 17,
-    fontWeight: '500',
-  },
-  // Version
-  versionText: {
-    marginTop: 24,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.2)',
-    textAlign: 'center',
-    letterSpacing: 0.5,
   },
 });

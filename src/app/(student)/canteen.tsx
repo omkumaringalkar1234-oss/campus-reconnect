@@ -15,18 +15,28 @@ import {
   Image,
 } from 'react-native';
 
-import { CampusTheme } from '@/constants/theme';
+import { Glass } from '@/constants/glass-theme';
 import { useAuth } from '@/context/auth-context';
 import { useAppTheme } from '@/context/theme-context';
 import { DataService } from '@/services/data-service';
 import { PaymentService } from '@/services/payment-service';
 import { SoundService } from '@/services/sound-service';
 import { FoodItem, Order, PaymentMethod, FoodCourtPayoutConfig, OrderStatus } from '@/types';
+import {
+  GlassCard,
+  GlassView,
+  GlassBadge,
+  GlassPill,
+  GlassButton,
+  GlassModal,
+  GlassAvatar,
+  GlassSectionHeader,
+} from '@/components/ui/glass-components';
 
 export default function CanteenScreen() {
   const router = useRouter();
   const { college, profile } = useAuth();
-  const { colors, isDark } = useAppTheme();
+  const { glass } = useAppTheme();
 
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
@@ -130,16 +140,16 @@ export default function CanteenScreen() {
     }
   };
 
-  const getStatusColor = (status: OrderStatus) => {
+  const getStatusVariant = (status: OrderStatus): 'teal' | 'gold' | 'purple' | 'info' => {
     switch (status) {
       case 'ready':
-        return '#34D399';
+        return 'teal';
       case 'preparing':
-        return '#F59E0B';
+        return 'gold';
       case 'accepted':
-        return '#3B82F6';
+        return 'info';
       default:
-        return '#10B981';
+        return 'purple';
     }
   };
 
@@ -194,7 +204,6 @@ export default function CanteenScreen() {
       });
 
       if (selectedPaymentMethod === 'UPI') {
-        // Trigger UPI flow with dynamic payout recipient
         const upiResult = await PaymentService.initiateUpiPayment({
           orderId: newOrder.id,
           collegeId: college.id,
@@ -214,7 +223,6 @@ export default function CanteenScreen() {
         setShowUpiModal(true);
         setConfirmedOrder(newOrder);
       } else {
-        // Cash order placed
         await PaymentService.initiateCashPayment(newOrder.id, college.id, profile.uid, newOrder.total);
         setConfirmedOrder(newOrder);
         setCart({});
@@ -229,7 +237,6 @@ export default function CanteenScreen() {
     }
   };
 
-  // Student switches active cash order to Online UPI Payment anytime
   const handleOpenOnlinePaymentForOrder = async (order: Order) => {
     try {
       const upiResult = await PaymentService.initiateUpiPayment({
@@ -283,8 +290,18 @@ export default function CanteenScreen() {
     return 'fast-food';
   };
 
+  const getCategoryIcon = (cat: string) => {
+    switch (cat) {
+      case 'Popular': return 'trending-up';
+      case 'Quick Bites': return 'flash';
+      case 'Drinks': return 'wine';
+      case 'Meals': return 'restaurant';
+      default: return 'grid';
+    }
+  };
+
   return (
-    <View style={[styles.safeContainer, { backgroundColor: '#0A0010' }]}>
+    <View style={styles.safeContainer}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
@@ -292,13 +309,13 @@ export default function CanteenScreen() {
         {/* HEADER */}
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.brandSubtitle, { color: colors.primary }]}>CAMPUS CONNECT CANTEEN</Text>
-            <Text style={[styles.screenHeading, { color: colors.text }]}>Today’s menu</Text>
+            <Text style={styles.brandSubtitle}>CAMPUS CONNECT CANTEEN</Text>
+            <Text style={styles.screenHeading}>Today's menu</Text>
             <View style={styles.ownerHeaderBadge}>
-              <Ionicons name="restaurant-outline" size={13} color={colors.primary} />
-              <Text style={[styles.ownerHeaderBadgeText, { color: colors.textMuted }]}>
+              <Ionicons name="restaurant-outline" size={13} color={glass.purple} />
+              <Text style={styles.ownerHeaderBadgeText}>
                 {payoutConfig?.businessName || 'JSPM Food Court'} • Owner:{' '}
-                <Text style={{ color: colors.primary, fontWeight: '800' }}>
+                <Text style={{ color: glass.purple, fontWeight: Glass.fontWeight.extrabold }}>
                   {payoutConfig?.accountHolderName || 'Suresh Patil'}
                 </Text>
               </Text>
@@ -310,56 +327,48 @@ export default function CanteenScreen() {
                 style={styles.headerCartBtn}
                 onPress={() => setCartModalVisible(true)}
               >
-                <Ionicons name="cart" size={15} color="#0D1411" />
+                <View style={styles.headerCartIcon}>
+                  <Ionicons name="cart" size={15} color={glass.bg} />
+                </View>
                 <Text style={styles.headerCartBtnText}>
                   {cartTotalItems} · ₹{cartSubtotal}
                 </Text>
               </Pressable>
             )}
             <Pressable
-              style={[
-                styles.historyBtn,
-                { backgroundColor: colors.card, borderColor: colors.cardBorder },
-              ]}
+              style={styles.historyBtn}
               onPress={() => setShowHistoryModal(true)}
             >
-              <Ionicons name="receipt-outline" size={16} color={colors.primary} />
-              <Text style={[styles.historyBtnText, { color: colors.primary }]}>Orders</Text>
+              <Ionicons name="receipt-outline" size={16} color={glass.purple} />
+              <Text style={styles.historyBtnText}>Orders</Text>
             </Pressable>
           </View>
         </View>
 
-        <Text style={[styles.screenSub, { color: colors.textMuted }]}>
+        <Text style={styles.screenSub}>
           Order fresh food ahead, avoid queues, and pick up easily with your 4-digit code.
         </Text>
 
-        {/* ACTIVE ORDER LIVE TRACKER BANNER (START TO END) */}
+        {/* ACTIVE ORDER LIVE TRACKER BANNER */}
         {activeOrders.length > 0 && (
-          <View style={styles.activeOrderBanner}>
+          <GlassCard variant="elevated" style={styles.activeOrderBanner}>
             <View style={styles.activeOrderHeader}>
               <View style={styles.activeOrderHeaderLeft}>
                 <View style={styles.activeOrderPulse} />
                 <Text style={styles.activeOrderHeading}>LIVE ORDER IN PROGRESS</Text>
               </View>
-              <View
-                style={[
-                  styles.activeStatusPill,
-                  { backgroundColor: getStatusColor(activeOrders[0].orderStatus) },
-                ]}
-              >
-                <Text style={styles.activeStatusPillText}>
-                  {getStatusLabel(activeOrders[0].orderStatus)}
-                </Text>
-              </View>
+              <GlassBadge variant={getStatusVariant(activeOrders[0].orderStatus)} size="md">
+                {getStatusLabel(activeOrders[0].orderStatus)}
+              </GlassBadge>
             </View>
 
             <View style={styles.activeOrderBody}>
               <View style={styles.activeOrderMainRow}>
-                <View style={{ flex: 1, paddingRight: 10 }}>
+                <View style={{ flex: 1, paddingRight: Glass.space.md }}>
                   <Text style={styles.activeOrderNumber}>{activeOrders[0].orderNumber}</Text>
                   <Text style={styles.activeOrderOwnerText}>
                     {payoutConfig?.businessName || 'JSPM Canteen'} • Owner:{' '}
-                    <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>
+                    <Text style={{ color: glass.text, fontWeight: Glass.fontWeight.bold }}>
                       {payoutConfig?.accountHolderName || 'Suresh Patil'}
                     </Text>
                   </Text>
@@ -374,7 +383,7 @@ export default function CanteenScreen() {
                 </View>
               </View>
 
-              {/* PAYMENT STATUS & ONLINE PAYMENT OPTION FROM START TO END */}
+              {/* PAYMENT STATUS & ONLINE PAYMENT OPTION */}
               <View style={styles.activePaymentRow}>
                 <View style={styles.activePaymentInfo}>
                   <Text style={styles.activePaymentTotal}>Total: ₹{activeOrders[0].total}</Text>
@@ -387,17 +396,18 @@ export default function CanteenScreen() {
                 </View>
 
                 {activeOrders[0].paymentStatus === 'cash_pending' && (
-                  <Pressable
-                    style={styles.switchUpiBtn}
+                  <GlassButton
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<Ionicons name="flash" size={13} color={glass.bg} />}
                     onPress={() => handleOpenOnlinePaymentForOrder(activeOrders[0])}
                   >
-                    <Ionicons name="flash" size={13} color="#0D1411" />
-                    <Text style={styles.switchUpiBtnText}>Pay Online via UPI</Text>
-                  </Pressable>
+                    Pay Online via UPI
+                  </GlassButton>
                 )}
               </View>
             </View>
-          </View>
+          </GlassCard>
         )}
 
         {/* CATEGORY PILLS */}
@@ -410,25 +420,15 @@ export default function CanteenScreen() {
           {categories.map((cat) => {
             const isActive = activeCategory === cat;
             return (
-              <Pressable
+              <GlassPill
                 key={cat}
-                style={[
-                  styles.categoryPill,
-                  { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(196,170,255,0.12)' },
-                  isActive && { backgroundColor: '#9B5CFF', borderColor: '#9B5CFF' },
-                ]}
+                selected={isActive}
+                variant="purple"
                 onPress={() => setActiveCategory(cat)}
+                style={styles.categoryPill}
               >
-                <Text
-                  style={[
-                    styles.categoryPillText,
-                    { color: colors.textMuted },
-                    isActive && { color: isDark ? '#0B110E' : '#FFFFFF', fontWeight: '800' },
-                  ]}
-                >
-                  {cat}
-                </Text>
-              </Pressable>
+                {cat}
+              </GlassPill>
             );
           })}
         </ScrollView>
@@ -438,58 +438,61 @@ export default function CanteenScreen() {
           {foodItems.map((item) => {
             const qtyInCart = cart[item.id] || 0;
             return (
-              <View
+              <GlassCard
                 key={item.id}
-                style={[styles.foodCard, { backgroundColor: 'rgba(255,255,255,0.055)', borderColor: 'rgba(196,170,255,0.13)' }]}
+                variant="interactive"
+                style={[styles.foodCard, { backgroundColor: Glass.bgCard, borderColor: Glass.border }]}
               >
-                <View style={[styles.foodIconBox, { backgroundColor: 'rgba(196,170,255,0.1)' }]}>
+                <View style={[styles.foodIconBox, { backgroundColor: Glass.purpleDim }]}>
                   <Ionicons
                     name={getItemIcon(item.category, item.name)}
                     size={28}
-                    color="#C4AAFF"
+                    color={glass.purple}
                   />
                 </View>
 
                 <View style={styles.foodInfo}>
-                  <View style={[styles.prepBadge, { backgroundColor: 'rgba(196,170,255,0.12)' }]}>
-                    <Text style={[styles.prepBadgeText, { color: '#C4AAFF' }]}>{item.prepTimeMinutes} min</Text>
-                  </View>
+                  <GlassBadge variant="purple" size="sm" style={styles.prepBadge}>
+                    {item.prepTimeMinutes} min
+                  </GlassBadge>
 
-                  <Text style={[styles.foodName, { color: '#FFFFFF' }]}>{item.name}</Text>
-                  <Text style={[styles.foodDesc, { color: 'rgba(255,255,255,0.4)' }]} numberOfLines={2}>
+                  <Text style={styles.foodName}>{item.name}</Text>
+                  <Text style={styles.foodDesc} numberOfLines={2}>
                     {item.description}
                   </Text>
 
                   <View style={styles.foodBottomRow}>
-                    <Text style={[styles.foodPrice, { color: '#FFFFFF' }]}>₹{item.price}</Text>
+                    <Text style={styles.foodPrice}>₹{item.price}</Text>
 
                     {qtyInCart > 0 ? (
-                      <View style={[styles.stepperBox, { backgroundColor: '#9B5CFF' }]}>
+                      <View style={styles.stepperBox}>
                         <Pressable
                           style={styles.stepperBtn}
                           onPress={() => removeFromCart(item.id)}
                         >
-                          <Ionicons name="remove" size={14} color="#FFFFFF" />
+                          <Ionicons name="remove" size={14} color={glass.text} />
                         </Pressable>
-                        <Text style={[styles.stepperQty, { color: '#FFFFFF' }]}>{qtyInCart}</Text>
+                        <Text style={styles.stepperQty}>{qtyInCart}</Text>
                         <Pressable
                           style={styles.stepperBtn}
                           onPress={() => addToCart(item.id)}
                         >
-                          <Ionicons name="add" size={14} color="#FFFFFF" />
+                          <Ionicons name="add" size={14} color={glass.text} />
                         </Pressable>
                       </View>
                     ) : (
-                      <Pressable
-                        style={[styles.addBtn, { backgroundColor: '#9B5CFF' }]}
+                      <GlassButton
+                        variant="primary"
+                        size="sm"
                         onPress={() => addToCart(item.id)}
+                        style={styles.addBtn}
                       >
-                        <Text style={[styles.addBtnText, { color: '#FFFFFF' }]}>+ Add</Text>
-                      </Pressable>
+                        + Add
+                      </GlassButton>
                     )}
                   </View>
                 </View>
-              </View>
+              </GlassCard>
             );
           })}
         </View>
@@ -513,18 +516,17 @@ export default function CanteenScreen() {
 
             <View style={styles.cartBarRight}>
               <Text style={styles.viewCartText}>View Cart</Text>
-              <Ionicons name="arrow-forward" size={16} color={CampusTheme.colors.background} />
+              <Ionicons name="arrow-forward" size={16} color={glass.bg} />
             </View>
           </Pressable>
         </View>
       )}
 
       {/* CART & CHECKOUT MODAL */}
-      <Modal
+      <GlassModal
         visible={cartModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setCartModalVisible(false)}
+        onClose={() => setCartModalVisible(false)}
+        size="lg"
       >
         <View style={styles.cartModalContainer}>
           <View style={styles.cartModalHeader}>
@@ -539,7 +541,7 @@ export default function CanteenScreen() {
               style={styles.closeCartBtn}
               onPress={() => setCartModalVisible(false)}
             >
-              <Ionicons name="close" size={24} color={CampusTheme.colors.text} />
+              <Ionicons name="close" size={24} color={glass.text} />
             </Pressable>
           </View>
 
@@ -561,14 +563,14 @@ export default function CanteenScreen() {
                       style={styles.cartStepperBtn}
                       onPress={() => removeFromCart(itemId)}
                     >
-                      <Ionicons name="remove" size={14} color={CampusTheme.colors.text} />
+                      <Ionicons name="remove" size={14} color={glass.text} />
                     </Pressable>
                     <Text style={styles.cartStepperCount}>{qty}</Text>
                     <Pressable
                       style={styles.cartStepperBtn}
                       onPress={() => addToCart(itemId)}
                     >
-                      <Ionicons name="add" size={14} color={CampusTheme.colors.text} />
+                      <Ionicons name="add" size={14} color={glass.text} />
                     </Pressable>
                   </View>
                 </View>
@@ -592,8 +594,8 @@ export default function CanteenScreen() {
                     size={24}
                     color={
                       selectedPaymentMethod === 'UPI'
-                        ? CampusTheme.colors.primary
-                        : CampusTheme.colors.textMuted
+                        ? glass.purple
+                        : glass.textMuted
                     }
                   />
                   <Text
@@ -619,8 +621,8 @@ export default function CanteenScreen() {
                     size={24}
                     color={
                       selectedPaymentMethod === 'CASH'
-                        ? CampusTheme.colors.primary
-                        : CampusTheme.colors.textMuted
+                        ? glass.purple
+                        : glass.textMuted
                     }
                   />
                   <Text
@@ -635,7 +637,7 @@ export default function CanteenScreen() {
                 </Pressable>
               </View>
 
-              <View style={styles.billBreakdown}>
+              <GlassView variant="default" style={styles.billBreakdown}>
                 <View style={styles.billRow}>
                   <Text style={styles.billLabel}>Item Subtotal</Text>
                   <Text style={styles.billValue}>₹{cartSubtotal}</Text>
@@ -648,364 +650,292 @@ export default function CanteenScreen() {
                   <Text style={styles.billTotalLabel}>Total to Pay</Text>
                   <Text style={styles.billTotalValue}>₹{cartSubtotal}</Text>
                 </View>
-              </View>
+              </GlassView>
             </View>
           </ScrollView>
 
           {/* CHECKOUT BUTTON */}
           <View style={styles.checkoutFooter}>
-            <Pressable
-              style={[styles.checkoutBtn, submittingOrder && { opacity: 0.7 }]}
+            <GlassButton
+              variant="primary"
+              size="lg"
               onPress={handlePlaceOrder}
               disabled={submittingOrder}
+              style={styles.checkoutBtn}
             >
               {submittingOrder ? (
-                <ActivityIndicator color={CampusTheme.colors.background} />
+                <ActivityIndicator color={glass.bg} />
               ) : (
                 <Text style={styles.checkoutBtnText}>
                   Place Order • ₹{cartSubtotal}
                 </Text>
               )}
-            </Pressable>
+            </GlassButton>
           </View>
         </View>
-      </Modal>
+      </GlassModal>
 
       {/* VERIFIED UPI GATEWAY MODAL */}
-      {showUpiModal && (
-        <Modal
-          visible={showUpiModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowUpiModal(false)}
-        >
-          <View style={styles.confirmOverlay}>
-            <View style={styles.confirmCard}>
-              <View style={styles.upiIconHeader}>
-                <Ionicons name="qr-code" size={36} color={CampusTheme.colors.primary} />
-              </View>
-
-              <Text style={styles.confirmTitle}>UPI Payment Verification</Text>
-              <Text style={styles.upiAmountText}>Amount: ₹{upiAmount}</Text>
-
-              {/* DYNAMIC FOOD COURT BANK & VPA CARD */}
-              <View
-                style={{
-                  backgroundColor: '#162820',
-                  borderRadius: 14,
-                  padding: 12,
-                  width: '100%',
-                  marginVertical: 10,
-                  borderWidth: 1,
-                  borderColor: 'rgba(142, 228, 175, 0.25)',
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: 6,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: '800',
-                      color: CampusTheme.colors.text,
-                    }}
-                  >
-                    {payoutConfig?.businessName || 'JSPM Central Food Court'}
-                  </Text>
-                  <View
-                    style={{
-                      backgroundColor: 'rgba(52, 211, 153, 0.2)',
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
-                      borderRadius: 4,
-                    }}
-                  >
-                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#34D399' }}>
-                      DIRECT BANK DEPOSIT
-                    </Text>
-                  </View>
-                </View>
-
-                <Text style={{ fontSize: 11, color: CampusTheme.colors.textMuted }}>
-                  Receiving Bank:{' '}
-                  <Text style={{ color: CampusTheme.colors.text, fontWeight: '700' }}>
-                    {payoutConfig?.bankName || 'HDFC Bank'}
-                  </Text>{' '}
-                  (A/C ending ••••
-                  {payoutConfig?.accountNumber
-                    ? payoutConfig.accountNumber.slice(-4)
-                    : '9283'}
-                  )
-                </Text>
-
-                <Text style={{ fontSize: 11, color: CampusTheme.colors.textMuted, marginTop: 3 }}>
-                  Payee UPI ID:{' '}
-                  <Text style={{ color: CampusTheme.colors.primary, fontWeight: '700' }}>
-                    {payoutConfig?.upiVpa || 'campusconnect.canteen@okhdfcbank'}
-                  </Text>
-                </Text>
-              </View>
-
-              {/* LIVE SCANNABLE DYNAMIC UPI QR CODE */}
-              <View style={{ alignItems: 'center', marginVertical: 8 }}>
-                <View
-                  style={{
-                    padding: 8,
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 14,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 6,
-                  }}
-                >
-                  <Image
-                    source={{
-                      uri: `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                        upiUriString ||
-                          `upi://pay?pa=${
-                            payoutConfig?.upiVpa || 'suresh.canteen@okhdfcbank'
-                          }&pn=${encodeURIComponent(
-                            payoutConfig?.businessName || 'JSPM Food Court'
-                          )}&am=${upiAmount}&cu=INR`
-                      )}`,
-                    }}
-                    style={{ width: 150, height: 150, borderRadius: 6 }}
-                    resizeMode="contain"
-                  />
-                </View>
-                <Text
-                  style={{
-                    fontSize: 10,
-                    color: CampusTheme.colors.textMuted,
-                    marginTop: 6,
-                    fontWeight: '700',
-                  }}
-                >
-                  SCAN WITH ANY UPI APP (GPAY · PHONEPE · PAYTM · BHIM)
-                </Text>
-              </View>
-
-              {/* 1-CLICK PAY VIA UPI APP BUTTON */}
-              <Pressable
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  backgroundColor: '#1E3528',
-                  borderWidth: 1,
-                  borderColor: CampusTheme.colors.primary,
-                  paddingVertical: 9,
-                  borderRadius: 10,
-                  marginBottom: 10,
-                  width: '100%',
-                }}
-                onPress={() => {
-                  const uri =
-                    upiUriString ||
-                    `upi://pay?pa=${
-                      payoutConfig?.upiVpa || 'suresh.canteen@okhdfcbank'
-                    }&pn=${encodeURIComponent(
-                      payoutConfig?.businessName || 'JSPM Food Court'
-                    )}&am=${upiAmount}&cu=INR`;
-                  Linking.openURL(uri).catch(() => {
-                    alert('Could not launch UPI app. Please scan the QR code above.');
-                  });
-                }}
-              >
-                <Ionicons name="flash" size={15} color={CampusTheme.colors.primary} />
-                <Text
-                  style={{ color: CampusTheme.colors.primary, fontWeight: '800', fontSize: 12 }}
-                >
-                  Pay via GPay / PhonePe / Paytm App
-                </Text>
-              </Pressable>
-
-              <View style={styles.upiRefInputBox}>
-                <Text style={styles.upiRefLabel}>BANK UTR / REFERENCE ID</Text>
-                <TextInput
-                  style={styles.upiInput}
-                  value={upiRefInput}
-                  onChangeText={setUpiRefInput}
-                  placeholder="Enter 12-digit UTR"
-                  placeholderTextColor={CampusTheme.colors.textDim}
-                />
-              </View>
-
-              {upiFeedback && (
-                <View
-                  style={[
-                    styles.upiFeedback,
-                    upiFeedback.success ? styles.upiSuccess : styles.upiError,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.upiFeedbackText,
-                      upiFeedback.success ? styles.upiSuccessText : styles.upiErrorText,
-                    ]}
-                  >
-                    {upiFeedback.message}
-                  </Text>
-                </View>
-              )}
-
-              <Pressable
-                style={[styles.verifyPayBtn, upiVerifying && { opacity: 0.7 }]}
-                onPress={handleVerifyUpi}
-                disabled={upiVerifying}
-              >
-                {upiVerifying ? (
-                  <ActivityIndicator color={CampusTheme.colors.background} />
-                ) : (
-                  <Text style={styles.verifyPayBtnText}>Confirm & Verify Payment</Text>
-                )}
-              </Pressable>
-            </View>
+      <GlassModal
+        visible={showUpiModal}
+        onClose={() => setShowUpiModal(false)}
+        size="lg"
+      >
+        <View style={styles.confirmCard}>
+          <View style={styles.upiIconHeader}>
+            <Ionicons name="qr-code" size={36} color={glass.purple} />
           </View>
-        </Modal>
-      )}
 
-      {/* CONFIRMED ORDER & OTP DIALOG */}
-      {confirmedOrder && !showUpiModal && (
-        <Modal
-          visible={!!confirmedOrder}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setConfirmedOrder(null)}
-        >
-          <View style={styles.confirmOverlay}>
-            <View style={styles.confirmCard}>
-              <View style={styles.confirmCheckCircle}>
-                <Ionicons name="checkmark" size={32} color={CampusTheme.colors.background} />
-              </View>
+          <Text style={styles.confirmTitle}>UPI Payment Verification</Text>
+          <Text style={styles.upiAmountText}>Amount: ₹{upiAmount}</Text>
 
-              <Text style={styles.confirmTitle}>Order Placed Successfully!</Text>
-              <Text style={styles.confirmOrderNumber}>{confirmedOrder.orderNumber}</Text>
-
-              <View style={styles.confirmOutletBox}>
-                <Ionicons name="restaurant-outline" size={14} color={CampusTheme.colors.primary} />
-                <Text style={styles.confirmOutletText}>
-                  {payoutConfig?.businessName || 'JSPM Food Court'} • Owner:{' '}
-                  <Text style={{ fontWeight: '800', color: CampusTheme.colors.primary }}>
-                    {payoutConfig?.accountHolderName || 'Suresh Patil'}
-                  </Text>
-                </Text>
-              </View>
-
-              <Text style={styles.confirmDesc}>
-                {confirmedOrder.paymentMethod === 'CASH'
-                  ? `Your order is sent to the canteen! Pay ₹${confirmedOrder.total} cash at the counter to collect your food. (OTP is not mandatory for cash orders). You can also switch to online payment anytime.`
-                  : `Your order is sent to the canteen! Show this 4-digit code at the counter when your food is ready:`}
+          {/* DYNAMIC FOOD COURT BANK & VPA CARD */}
+          <GlassView variant="default" style={styles.upiBankCard}>
+            <View style={styles.upiBankHeader}>
+              <Text style={styles.upiBankName}>
+                {payoutConfig?.businessName || 'JSPM Central Food Court'}
               </Text>
+              <GlassBadge variant="teal" size="xs">DIRECT BANK DEPOSIT</GlassBadge>
+            </View>
 
-              <View style={styles.confirmOtpBox}>
-                <Text style={styles.confirmOtpLabel}>YOUR 4-DIGIT PICKUP OTP</Text>
-                <Text style={styles.confirmOtpCode}>{confirmedOrder.pickupOtp}</Text>
-              </View>
+            <Text style={styles.upiBankDetail}>
+              Receiving Bank:{' '}
+              <Text style={{ color: glass.text, fontWeight: Glass.fontWeight.extrabold }}>
+                {payoutConfig?.bankName || 'HDFC Bank'}
+              </Text>{' '}
+              (A/C ending ••••
+              {payoutConfig?.accountNumber
+                ? payoutConfig.accountNumber.slice(-4)
+                : '9283'}
+              )
+            </Text>
 
-              <View
+            <Text style={styles.upiBankDetail}>
+              Payee UPI ID:{' '}
+              <Text style={{ color: glass.purple, fontWeight: Glass.fontWeight.extrabold }}>
+                {payoutConfig?.upiVpa || 'campusconnect.canteen@okhdfcbank'}
+              </Text>
+            </Text>
+          </GlassView>
+
+          {/* LIVE SCANNABLE DYNAMIC UPI QR CODE */}
+          <View style={styles.upiQrWrapper}>
+            <View style={styles.upiQrFrame}>
+              <Image
+                source={{
+                  uri: `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                    upiUriString ||
+                      `upi://pay?pa=${
+                        payoutConfig?.upiVpa || 'suresh.canteen@okhdfcbank'
+                      }&pn=${encodeURIComponent(
+                        payoutConfig?.businessName || 'JSPM Food Court'
+                      )}&am=${upiAmount}&cu=INR`
+                  )}`,
+                }}
+                style={styles.upiQrImage}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.upiQrHint}>
+              SCAN WITH ANY UPI APP (GPAY · PHONEPE · PAYTM · BHIM)
+            </Text>
+          </View>
+
+          {/* 1-CLICK PAY VIA UPI APP BUTTON */}
+          <Pressable
+            style={styles.upiQuickPayBtn}
+            onPress={() => {
+              const uri =
+                upiUriString ||
+                `upi://pay?pa=${
+                  payoutConfig?.upiVpa || 'suresh.canteen@okhdfcbank'
+                }&pn=${encodeURIComponent(
+                  payoutConfig?.businessName || 'JSPM Food Court'
+                )}&am=${upiAmount}&cu=INR`;
+              Linking.openURL(uri).catch(() => {
+                alert('Could not launch UPI app. Please scan the QR code above.');
+              });
+            }}
+          >
+            <Ionicons name="flash" size={15} color={glass.purple} />
+            <Text style={styles.upiQuickPayText}>Pay via GPay / PhonePe / Paytm App</Text>
+          </Pressable>
+
+          <View style={styles.upiRefInputBox}>
+            <Text style={styles.upiRefLabel}>BANK UTR / REFERENCE ID</Text>
+            <TextInput
+              style={styles.upiInput}
+              value={upiRefInput}
+              onChangeText={setUpiRefInput}
+              placeholder="Enter 12-digit UTR"
+              placeholderTextColor={glass.textDim}
+            />
+          </View>
+
+          {upiFeedback && (
+            <GlassView
+              variant="default"
+              style={[
+                styles.upiFeedback,
+                upiFeedback.success ? styles.upiSuccess : styles.upiError,
+              ]}
+            >
+              <Text
                 style={[
-                  styles.confirmPaymentPill,
-                  confirmedOrder.paymentMethod === 'CASH'
-                    ? styles.confirmPaymentCash
-                    : styles.confirmPaymentUpi,
+                  styles.upiFeedbackText,
+                  upiFeedback.success ? styles.upiSuccessText : styles.upiErrorText,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.confirmPaymentPillText,
-                    confirmedOrder.paymentMethod === 'CASH'
-                      ? styles.confirmPaymentCashText
-                      : styles.confirmPaymentUpiText,
-                  ]}
-                >
-                  {confirmedOrder.paymentMethod === 'CASH'
-                    ? `💵 Cash at Counter: ₹${confirmedOrder.total}`
-                    : `✅ Paid Online via UPI: ₹${confirmedOrder.total}`}
-                </Text>
-              </View>
+                {upiFeedback.message}
+              </Text>
+            </GlassView>
+          )}
 
-              <Pressable
-                style={styles.doneBtn}
-                onPress={() => {
-                  setConfirmedOrder(null);
-                }}
-              >
-                <Text style={styles.doneBtnText}>View & Track on Menu</Text>
-              </Pressable>
+          <GlassButton
+            variant="primary"
+            size="lg"
+            onPress={handleVerifyUpi}
+            disabled={upiVerifying}
+            style={styles.verifyPayBtn}
+          >
+            {upiVerifying ? (
+              <ActivityIndicator color={glass.bg} />
+            ) : (
+              <Text style={styles.verifyPayBtnText}>Confirm & Verify Payment</Text>
+            )}
+          </GlassButton>
+        </View>
+      </GlassModal>
+
+      {/* CONFIRMED ORDER & OTP DIALOG */}
+      <GlassModal
+        visible={!!confirmedOrder && !showUpiModal}
+        onClose={() => setConfirmedOrder(null)}
+        size="md"
+      >
+        {confirmedOrder && (
+          <View style={styles.confirmCard}>
+            <View style={styles.confirmCheckCircle}>
+              <Ionicons name="checkmark" size={32} color={glass.bg} />
             </View>
+
+            <Text style={styles.confirmTitle}>Order Placed Successfully!</Text>
+            <Text style={styles.confirmOrderNumber}>{confirmedOrder.orderNumber}</Text>
+
+            <View style={styles.confirmOutletBox}>
+              <Ionicons name="restaurant-outline" size={14} color={glass.purple} />
+              <Text style={styles.confirmOutletText}>
+                {payoutConfig?.businessName || 'JSPM Food Court'} • Owner:{' '}
+                <Text style={{ fontWeight: Glass.fontWeight.extrabold, color: glass.purple }}>
+                  {payoutConfig?.accountHolderName || 'Suresh Patil'}
+                </Text>
+              </Text>
+            </View>
+
+            <Text style={styles.confirmDesc}>
+              {confirmedOrder.paymentMethod === 'CASH'
+                ? `Your order is sent to the canteen! Pay ₹${confirmedOrder.total} cash at the counter to collect your food. (OTP is not mandatory for cash orders). You can also switch to online payment anytime.`
+                : `Your order is sent to the canteen! Show this 4-digit code at the counter when your food is ready:`}
+            </Text>
+
+            <GlassView variant="default" style={styles.confirmOtpBox}>
+              <Text style={styles.confirmOtpLabel}>YOUR 4-DIGIT PICKUP OTP</Text>
+              <Text style={styles.confirmOtpCode}>{confirmedOrder.pickupOtp}</Text>
+            </GlassView>
+
+            <GlassView
+              variant="default"
+              style={[
+                styles.confirmPaymentPill,
+                confirmedOrder.paymentMethod === 'CASH'
+                  ? styles.confirmPaymentCash
+                  : styles.confirmPaymentUpi,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.confirmPaymentPillText,
+                  confirmedOrder.paymentMethod === 'CASH'
+                    ? styles.confirmPaymentCashText
+                    : styles.confirmPaymentUpiText,
+                ]}
+              >
+                {confirmedOrder.paymentMethod === 'CASH'
+                  ? `💵 Cash at Counter: ₹${confirmedOrder.total}`
+                  : `✅ Paid Online via UPI: ₹${confirmedOrder.total}`}
+              </Text>
+            </GlassView>
+
+            <GlassButton
+              variant="primary"
+              size="md"
+              onPress={() => setConfirmedOrder(null)}
+              style={styles.doneBtn}
+            >
+              View & Track on Menu
+            </GlassButton>
           </View>
-        </Modal>
-      )}
+        )}
+      </GlassModal>
 
       {/* ORDER HISTORY MODAL */}
-      {showHistoryModal && (
-        <Modal
-          visible={showHistoryModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowHistoryModal(false)}
-        >
-          <View style={styles.cartModalContainer}>
-            <View style={styles.cartModalHeader}>
-              <View>
-                <Text style={styles.cartModalTitle}>Order History</Text>
-                <Text style={styles.cartModalSub}>Past Canteen Orders & Receipts</Text>
-              </View>
-              <Pressable
-                style={styles.closeCartBtn}
-                onPress={() => setShowHistoryModal(false)}
-              >
-                <Ionicons name="close" size={24} color={CampusTheme.colors.text} />
-              </Pressable>
+      <GlassModal
+        visible={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        size="lg"
+      >
+        <View style={styles.cartModalContainer}>
+          <View style={styles.cartModalHeader}>
+            <View>
+              <Text style={styles.cartModalTitle}>Order History</Text>
+              <Text style={styles.cartModalSub}>Past Canteen Orders & Receipts</Text>
             </View>
-
-            <ScrollView style={styles.cartItemsScroll}>
-              {myOrders.length === 0 ? (
-                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                  <Text style={{ color: CampusTheme.colors.textMuted }}>No previous orders found.</Text>
-                </View>
-              ) : (
-                myOrders.map((ord) => (
-                  <View key={ord.id} style={styles.historyCard}>
-                    <View style={styles.historyTop}>
-                      <Text style={styles.historyOrderNum}>{ord.orderNumber}</Text>
-                      <View style={styles.historyStatusPill}>
-                        <Text style={styles.historyStatusText}>{ord.orderStatus.toUpperCase()}</Text>
-                      </View>
-                    </View>
-
-                    <Text style={styles.historyItemsText}>
-                      {ord.items.map((i) => `${i.quantity}× ${i.name}`).join(', ')}
-                    </Text>
-
-                    <View style={styles.historyBottom}>
-                      <Text style={styles.historyTotal}>Total: ₹{ord.total}</Text>
-                      <Text style={styles.historyPayText}>
-                        {ord.paymentMethod} • {ord.paymentStatus.toUpperCase()}
-                      </Text>
-                    </View>
-
-                    {ord.pickupOtp && (
-                      <View style={styles.historyOtpRow}>
-                        <Text style={styles.historyOtpLabel}>Pickup OTP: </Text>
-                        <Text style={styles.historyOtpValue}>{ord.pickupOtp}</Text>
-                      </View>
-                    )}
-                  </View>
-                ))
-              )}
-            </ScrollView>
+            <Pressable
+              style={styles.closeCartBtn}
+              onPress={() => setShowHistoryModal(false)}
+            >
+              <Ionicons name="close" size={24} color={glass.text} />
+            </Pressable>
           </View>
-        </Modal>
-      )}
+
+          <ScrollView style={styles.cartItemsScroll}>
+            {myOrders.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: Glass.space.xl }}>
+                <Text style={{ color: glass.textMuted }}>No previous orders found.</Text>
+              </View>
+            ) : (
+              myOrders.map((ord) => (
+                <GlassCard key={ord.id} variant="default" style={styles.historyCard}>
+                  <View style={styles.historyTop}>
+                    <Text style={styles.historyOrderNum}>{ord.orderNumber}</Text>
+                    <GlassBadge variant={getStatusVariant(ord.orderStatus)} size="sm">
+                      {ord.orderStatus.toUpperCase()}
+                    </GlassBadge>
+                  </View>
+
+                  <Text style={styles.historyItemsText}>
+                    {ord.items.map((i) => `${i.quantity}× ${i.name}`).join(', ')}
+                  </Text>
+
+                  <View style={styles.historyBottom}>
+                    <Text style={styles.historyTotal}>Total: ₹{ord.total}</Text>
+                    <Text style={styles.historyPayText}>
+                      {ord.paymentMethod} • {ord.paymentStatus.toUpperCase()}
+                    </Text>
+                  </View>
+
+                  {ord.pickupOtp && (
+                    <View style={styles.historyOtpRow}>
+                      <Text style={styles.historyOtpLabel}>Pickup OTP: </Text>
+                      <Text style={styles.historyOtpValue}>{ord.pickupOtp}</Text>
+                    </View>
+                  )}
+                </GlassCard>
+              ))
+            )}
+          </ScrollView>
+        </View>
+      </GlassModal>
     </View>
   );
 }
@@ -1013,16 +943,16 @@ export default function CanteenScreen() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#0A0010',
+    backgroundColor: Glass.bg,
   },
   container: {
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: Glass.space.md,
     paddingTop: 54,
     paddingBottom: 210,
-    maxWidth: 600,
+    maxWidth: Glass.maxContentWidth,
     alignSelf: 'center',
     width: '100%',
   },
@@ -1030,123 +960,111 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: Glass.space.sm,
   },
   headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Glass.space.sm,
   },
   headerCartBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#9B5CFF',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 10,
+    gap: Glass.space.xs,
+    backgroundColor: Glass.purpleBright,
+    paddingHorizontal: Glass.space.sm,
+    paddingVertical: Glass.space.xs,
+    borderRadius: Glass.radius.md,
+  },
+  headerCartIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: Glass.radius.circle,
+    backgroundColor: Glass.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerCartBtnText: {
-    color: '#0D1411',
-    fontSize: 12,
-    fontWeight: '800',
+    color: Glass.bg,
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.extrabold,
   },
   historyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#162820',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
+    gap: Glass.space.xs,
+    backgroundColor: Glass.bgCard,
+    paddingHorizontal: Glass.space.sm,
+    paddingVertical: Glass.space.xs,
+    borderRadius: Glass.radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(142, 228, 175, 0.2)',
+    borderColor: Glass.border,
   },
   historyBtnText: {
-    color: CampusTheme.colors.primary,
-    fontSize: 12,
-    fontWeight: '700',
+    color: Glass.purple,
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.bold,
   },
   brandSubtitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: CampusTheme.colors.primary,
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
     letterSpacing: 1.2,
-    marginBottom: 4,
+    marginBottom: Glass.space.xs,
   },
   screenHeading: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
+    fontSize: Glass.fontSize.display,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
     letterSpacing: -0.5,
   },
   screenSub: {
-    fontSize: 14,
-    color: CampusTheme.colors.textMuted,
-    marginTop: 4,
-    marginBottom: 20,
+    fontSize: Glass.fontSize.md,
+    color: Glass.textMuted,
+    marginTop: Glass.space.sm,
+    marginBottom: Glass.space.lg,
   },
   ownerHeaderBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
-    backgroundColor: 'rgba(142, 228, 175, 0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    gap: Glass.space.xs,
+    marginTop: Glass.space.sm,
+    backgroundColor: Glass.purpleDim,
+    paddingHorizontal: Glass.space.sm,
+    paddingVertical: Glass.space.xs,
+    borderRadius: Glass.radius.sm,
     alignSelf: 'flex-start',
   },
   ownerHeaderBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.semibold,
+    color: Glass.textMuted,
   },
   categoryScrollView: {
-    marginBottom: 24,
+    marginBottom: Glass.space.xl,
   },
   categoryScroll: {
-    gap: 8,
-    paddingRight: 10,
+    gap: Glass.space.sm,
+    paddingRight: Glass.space.md,
   },
   categoryPill: {
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    borderRadius: 9999,
-    backgroundColor: '#162820',
-    borderWidth: 1,
-    borderColor: 'rgba(142, 228, 175, 0.1)',
-  },
-  activeCategoryPill: {
-    backgroundColor: CampusTheme.colors.primary,
-    borderColor: CampusTheme.colors.primary,
-  },
-  categoryPillText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: CampusTheme.colors.textMuted,
-  },
-  activeCategoryPillText: {
-    color: CampusTheme.colors.background,
-    fontWeight: '800',
+    paddingHorizontal: Glass.space.md,
+    paddingVertical: Glass.space.xs,
   },
   menuList: {
-    gap: 16,
+    gap: Glass.space.md,
   },
   foodCard: {
     flexDirection: 'row',
-    backgroundColor: '#15251E',
-    borderRadius: 22,
-    padding: 16,
-    gap: 14,
+    borderRadius: Glass.radius.xl,
+    padding: Glass.space.md,
+    gap: Glass.space.md,
     borderWidth: 1,
-    borderColor: 'rgba(142, 228, 175, 0.15)',
-    ...CampusTheme.shadows.card,
   },
   foodIconBox: {
     width: 68,
     height: 68,
-    borderRadius: 18,
-    backgroundColor: '#1C3328',
+    borderRadius: Glass.radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1154,29 +1072,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   prepBadge: {
-    backgroundColor: '#1C3528',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    marginBottom: Glass.space.sm,
     alignSelf: 'flex-start',
-    marginBottom: 6,
-  },
-  prepBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#A3D9BE',
   },
   foodName: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
-    marginBottom: 4,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: Glass.space.xs,
   },
   foodDesc: {
-    fontSize: 12,
-    color: CampusTheme.colors.textMuted,
-    lineHeight: 16,
-    marginBottom: 12,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    lineHeight: Glass.lineHeight.normal * Glass.fontSize.sm,
+    marginBottom: Glass.space.md,
   },
   foodBottomRow: {
     flexDirection: 'row',
@@ -1184,663 +1093,641 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   foodPrice: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
+    fontSize: Glass.fontSize.xl,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
   addBtn: {
-    backgroundColor: CampusTheme.colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  addBtnText: {
-    color: CampusTheme.colors.background,
-    fontSize: 13,
-    fontWeight: '800',
+    minWidth: 80,
   },
   stepperBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: CampusTheme.colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    gap: 8,
+    backgroundColor: Glass.purpleBright,
+    borderRadius: Glass.radius.md,
+    paddingHorizontal: Glass.space.xs,
+    paddingVertical: Glass.space.xs,
+    gap: Glass.space.sm,
   },
   stepperBtn: {
-    padding: 4,
+    padding: Glass.space.xs,
   },
   stepperQty: {
-    color: CampusTheme.colors.background,
-    fontWeight: '800',
-    fontSize: 13,
+    color: Glass.bg,
+    fontWeight: Glass.fontWeight.extrabold,
+    fontSize: Glass.fontSize.md,
   },
   floatingCartContainer: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 128 : 110,
-    left: 16,
-    right: 16,
+    left: Glass.space.md,
+    right: Glass.space.md,
     alignItems: 'center',
-    zIndex: 9999,
+    zIndex: Glass.zIndex.floating,
   },
   floatingCartBar: {
     width: '100%',
     maxWidth: 500,
-    backgroundColor: CampusTheme.colors.primary,
-    borderRadius: 20,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
+    backgroundColor: Glass.purpleBright,
+    borderRadius: Glass.radius.xl,
+    paddingVertical: Glass.space.md,
+    paddingHorizontal: Glass.space.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    ...CampusTheme.shadows.glow,
+    ...Glass.btnShadow,
   },
   cartBarLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: Glass.space.sm,
   },
   cartCountCircle: {
     width: 26,
     height: 26,
-    borderRadius: 13,
-    backgroundColor: '#0D1411',
+    borderRadius: Glass.radius.circle,
+    backgroundColor: Glass.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cartCountText: {
-    color: CampusTheme.colors.primary,
-    fontWeight: '800',
-    fontSize: 12,
+    color: Glass.purpleBright,
+    fontWeight: Glass.fontWeight.extrabold,
+    fontSize: Glass.fontSize.sm,
   },
   cartBarSummary: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0D1411',
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.bg,
   },
   cartBarRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: Glass.space.xs,
   },
   viewCartText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0D1411',
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.bg,
   },
   cartModalContainer: {
     flex: 1,
-    backgroundColor: CampusTheme.colors.background,
+    backgroundColor: Glass.bg,
   },
   cartModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 30,
+    padding: Glass.space.md,
+    paddingTop: Glass.space.lg,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: Glass.border,
   },
   cartModalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
+    fontSize: Glass.fontSize.xl,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
   cartModalSub: {
-    fontSize: 13,
-    color: CampusTheme.colors.primary,
-    marginTop: 2,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.purple,
+    marginTop: Glass.space.xs,
+    fontWeight: Glass.fontWeight.semibold,
   },
   closeCartBtn: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1A2A22',
+    borderRadius: Glass.radius.circle,
+    backgroundColor: Glass.bgCard,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cartItemsScroll: {
     flex: 1,
-    padding: 20,
+    padding: Glass.space.md,
   },
   cartItemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: Glass.space.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomColor: Glass.borderSubtle,
   },
   cartItemDetails: {
     flex: 1,
   },
   cartItemName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: CampusTheme.colors.text,
-    marginBottom: 4,
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.bold,
+    color: Glass.text,
+    marginBottom: Glass.space.xs,
   },
   cartItemPrice: {
-    fontSize: 13,
-    color: CampusTheme.colors.primary,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.purple,
+    fontWeight: Glass.fontWeight.semibold,
   },
   cartStepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#162820',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    gap: 10,
+    backgroundColor: Glass.bgCard,
+    borderRadius: Glass.radius.md,
+    paddingHorizontal: Glass.space.xs,
+    paddingVertical: Glass.space.xs,
+    gap: Glass.space.sm,
   },
   cartStepperBtn: {
-    padding: 4,
+    padding: Glass.space.xs,
   },
   cartStepperCount: {
-    color: CampusTheme.colors.text,
-    fontWeight: '700',
-    fontSize: 13,
+    color: Glass.text,
+    fontWeight: Glass.fontWeight.bold,
+    fontSize: Glass.fontSize.md,
   },
   paymentSection: {
-    marginTop: 24,
-    marginBottom: 30,
+    marginTop: Glass.space.xl,
+    marginBottom: Glass.space.xl,
   },
   paymentSectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
-    marginBottom: 12,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: Glass.space.md,
   },
   paymentOptionsRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
+    gap: Glass.space.md,
+    marginBottom: Glass.space.xl,
   },
   paymentOptionCard: {
     flex: 1,
-    backgroundColor: '#15251E',
-    borderRadius: 18,
-    padding: 16,
+    backgroundColor: Glass.bgCard,
+    borderRadius: Glass.radius.lg,
+    padding: Glass.space.md,
     borderWidth: 1,
-    borderColor: 'rgba(142, 228, 175, 0.12)',
+    borderColor: Glass.border,
+    alignItems: 'center',
   },
   activePaymentOption: {
-    borderColor: CampusTheme.colors.primary,
-    backgroundColor: '#1B3528',
+    borderColor: Glass.purple,
+    backgroundColor: Glass.purpleDim,
   },
   paymentOptionName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
-    marginTop: 8,
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginTop: Glass.space.sm,
   },
   activePaymentText: {
-    color: CampusTheme.colors.primary,
+    color: Glass.purple,
   },
   paymentOptionDesc: {
-    fontSize: 11,
-    color: CampusTheme.colors.textMuted,
-    marginTop: 2,
+    fontSize: Glass.fontSize.xs,
+    color: Glass.textMuted,
+    marginTop: Glass.space.xs,
+    textAlign: 'center',
   },
   billBreakdown: {
-    backgroundColor: '#15251E',
-    borderRadius: 18,
-    padding: 18,
-    gap: 10,
+    padding: Glass.space.md,
+    gap: Glass.space.sm,
   },
   billRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   billLabel: {
-    fontSize: 13,
-    color: CampusTheme.colors.textMuted,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
   },
   billValue: {
-    fontSize: 13,
-    color: CampusTheme.colors.text,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.text,
+    fontWeight: Glass.fontWeight.semibold,
   },
   billRowTotal: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
-    paddingTop: 10,
-    marginTop: 4,
+    borderTopColor: Glass.borderSubtle,
+    paddingTop: Glass.space.md,
+    marginTop: Glass.space.sm,
   },
   billTotalLabel: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
   billTotalValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: CampusTheme.colors.primary,
+    fontSize: Glass.fontSize.xl,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
   },
   checkoutFooter: {
-    padding: 20,
+    padding: Glass.space.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: '#0E1713',
+    borderTopColor: Glass.border,
+    backgroundColor: Glass.bgElevated,
   },
   checkoutBtn: {
-    backgroundColor: CampusTheme.colors.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
+    width: '100%',
   },
   checkoutBtnText: {
-    color: CampusTheme.colors.background,
-    fontSize: 16,
-    fontWeight: '800',
+    color: Glass.bg,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
   },
   confirmOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: Glass.space.md,
   },
   confirmCard: {
-    backgroundColor: '#14231B',
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: Glass.bgModalCard,
+    borderRadius: Glass.radius.xxl,
+    padding: Glass.space.xl,
     width: '100%',
     maxWidth: 420,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: CampusTheme.colors.primary,
+    borderColor: Glass.borderStrong,
+  },
+  upiIconHeader: {
+    marginBottom: Glass.space.md,
+  },
+  confirmTitle: {
+    fontSize: Glass.fontSize.xl,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    textAlign: 'center',
+  },
+  upiAmountText: {
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.bold,
+    color: Glass.textSub,
+    marginBottom: Glass.space.lg,
+  },
+  upiBankCard: {
+    width: '100%',
+    marginVertical: Glass.space.md,
+  },
+  upiBankHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Glass.space.sm,
+  },
+  upiBankName: {
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+  },
+  upiBankDetail: {
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginTop: Glass.space.sm,
+  },
+  upiQrWrapper: {
+    alignItems: 'center',
+    marginVertical: Glass.space.md,
+  },
+  upiQrFrame: {
+    padding: Glass.space.sm,
+    backgroundColor: Glass.text,
+    borderRadius: Glass.radius.lg,
+    ...Glass.cardShadowElevated,
+  },
+  upiQrImage: {
+    width: 150,
+    height: 150,
+    borderRadius: Glass.radius.sm,
+  },
+  upiQrHint: {
+    fontSize: Glass.fontSize.xs,
+    color: Glass.textDim,
+    marginTop: Glass.space.sm,
+    fontWeight: Glass.fontWeight.bold,
+  },
+  upiQuickPayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Glass.space.sm,
+    backgroundColor: Glass.bgElevated,
+    borderWidth: 1,
+    borderColor: Glass.purple,
+    paddingVertical: Glass.space.sm,
+    borderRadius: Glass.radius.md,
+    marginBottom: Glass.space.md,
+    width: '100%',
+  },
+  upiQuickPayText: {
+    color: Glass.purple,
+    fontWeight: Glass.fontWeight.extrabold,
+    fontSize: Glass.fontSize.sm,
+  },
+  upiRefInputBox: {
+    marginBottom: Glass.space.md,
+  },
+  upiRefLabel: {
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
+    letterSpacing: 0.5,
+    marginBottom: Glass.space.xs,
+  },
+  upiInput: {
+    backgroundColor: Glass.bgInput,
+    borderRadius: Glass.radius.md,
+    borderWidth: 1,
+    borderColor: Glass.border,
+    paddingHorizontal: Glass.space.md,
+    paddingVertical: Glass.space.sm,
+    color: Glass.text,
+    fontSize: Glass.fontSize.md,
+  },
+  upiFeedback: {
+    padding: Glass.space.md,
+    borderRadius: Glass.radius.md,
+    marginBottom: Glass.space.md,
+  },
+  upiSuccess: {
+    backgroundColor: Glass.successDim,
+    borderWidth: 1,
+    borderColor: Glass.successBorder,
+  },
+  upiError: {
+    backgroundColor: Glass.dangerDim,
+    borderWidth: 1,
+    borderColor: Glass.dangerBorder,
+  },
+  upiFeedbackText: {
+    fontSize: Glass.fontSize.sm,
+    textAlign: 'center',
+  },
+  upiSuccessText: {
+    color: Glass.success,
+  },
+  upiErrorText: {
+    color: Glass.danger,
+  },
+  verifyPayBtn: {
+    width: '100%',
+    marginTop: Glass.space.sm,
+  },
+  verifyPayBtnText: {
+    color: Glass.bg,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
   },
   confirmCheckCircle: {
     width: 60,
     height: 60,
-    borderRadius: 30,
-    backgroundColor: CampusTheme.colors.primary,
+    borderRadius: Glass.radius.circle,
+    backgroundColor: Glass.purpleBright,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
-  },
-  confirmTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
+    marginBottom: Glass.space.md,
   },
   confirmOrderNumber: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: CampusTheme.colors.primary,
-    marginTop: 4,
-    marginBottom: 12,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.bold,
+    color: Glass.purple,
+    marginTop: Glass.space.xs,
+    marginBottom: Glass.space.md,
   },
   confirmDesc: {
-    fontSize: 13,
-    color: CampusTheme.colors.textMuted,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
     textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 20,
+    lineHeight: Glass.lineHeight.relaxed * Glass.fontSize.sm,
+    marginBottom: Glass.space.xl,
   },
   confirmOtpBox: {
-    backgroundColor: '#1B3528',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 28,
+    backgroundColor: Glass.purpleDim,
+    borderRadius: Glass.radius.lg,
+    paddingVertical: Glass.space.md,
+    paddingHorizontal: Glass.space.xl,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: CampusTheme.colors.primary,
-    marginBottom: 16,
+    borderColor: Glass.purple,
+    marginBottom: Glass.space.md,
+    width: '100%',
   },
   confirmOtpLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: CampusTheme.colors.primary,
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
     letterSpacing: 1,
-    marginBottom: 4,
+    marginBottom: Glass.space.xs,
   },
   confirmOtpCode: {
     fontSize: 32,
-    fontWeight: '900',
-    color: CampusTheme.colors.text,
+    fontWeight: Glass.fontWeight.black,
+    color: Glass.text,
     letterSpacing: 4,
-  },
-  confirmPaymentNote: {
-    fontSize: 12,
-    color: CampusTheme.colors.textMuted,
-    marginBottom: 22,
   },
   confirmOutletBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(142, 228, 175, 0.08)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginBottom: 12,
+    gap: Glass.space.xs,
+    backgroundColor: Glass.purpleDim,
+    paddingHorizontal: Glass.space.sm,
+    paddingVertical: Glass.space.xs,
+    borderRadius: Glass.radius.sm,
+    marginBottom: Glass.space.md,
   },
   confirmOutletText: {
-    fontSize: 11,
-    color: CampusTheme.colors.textMuted,
+    fontSize: Glass.fontSize.xs,
+    color: Glass.textMuted,
   },
   confirmPaymentPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 18,
+    paddingHorizontal: Glass.space.md,
+    paddingVertical: Glass.space.sm,
+    borderRadius: Glass.radius.md,
+    marginBottom: Glass.space.md,
     width: '100%',
     alignItems: 'center',
   },
   confirmPaymentCash: {
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    backgroundColor: Glass.goldDim,
     borderWidth: 1,
-    borderColor: '#FBBF24',
+    borderColor: Glass.gold,
   },
   confirmPaymentUpi: {
-    backgroundColor: 'rgba(52, 211, 153, 0.15)',
+    backgroundColor: Glass.tealDim,
     borderWidth: 1,
-    borderColor: CampusTheme.colors.primary,
+    borderColor: Glass.teal,
   },
   confirmPaymentPillText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.extrabold,
   },
   confirmPaymentCashText: {
-    color: '#FDE047',
+    color: Glass.gold,
   },
   confirmPaymentUpiText: {
-    color: CampusTheme.colors.primary,
+    color: Glass.teal,
+  },
+  doneBtn: {
+    width: '100%',
+    marginTop: Glass.space.sm,
   },
   // Active Order Live Tracker Banner
   activeOrderBanner: {
-    backgroundColor: '#13231B',
-    borderRadius: 18,
+    borderRadius: Glass.radius.xl,
     borderWidth: 1.5,
-    borderColor: 'rgba(142, 228, 175, 0.3)',
-    marginBottom: 20,
+    borderColor: Glass.purple,
+    marginBottom: Glass.space.xl,
     overflow: 'hidden',
-    ...CampusTheme.shadows.card,
   },
   activeOrderHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(142, 228, 175, 0.08)',
+    paddingHorizontal: Glass.space.md,
+    paddingVertical: Glass.space.sm,
+    backgroundColor: Glass.purpleDim,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(142, 228, 175, 0.15)',
+    borderBottomColor: Glass.border,
   },
   activeOrderHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Glass.space.sm,
   },
   activeOrderPulse: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: CampusTheme.colors.primary,
+    backgroundColor: Glass.purplePink,
+    // Animation handled by component
   },
   activeOrderHeading: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: CampusTheme.colors.primary,
-    letterSpacing: 0.8,
-  },
-  activeStatusPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  activeStatusPillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#0D1411',
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
+    letterSpacing: 0.5,
   },
   activeOrderBody: {
-    padding: 14,
+    padding: Glass.space.md,
   },
   activeOrderMainRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: Glass.space.md,
   },
   activeOrderNumber: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: Glass.space.xs,
   },
   activeOrderOwnerText: {
-    fontSize: 11,
-    color: CampusTheme.colors.textMuted,
-    marginTop: 2,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginBottom: Glass.space.xs,
+    lineHeight: Glass.lineHeight.normal * Glass.fontSize.sm,
   },
   activeOrderItemsSummary: {
-    fontSize: 12,
-    color: CampusTheme.colors.primary,
-    marginTop: 4,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textSub,
+    fontWeight: Glass.fontWeight.medium,
   },
   activeOtpCard: {
-    backgroundColor: '#0E1712',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: CampusTheme.colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: Glass.purpleDim,
+    borderRadius: Glass.radius.lg,
+    paddingHorizontal: Glass.space.md,
+    paddingVertical: Glass.space.md,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Glass.purple,
+    minWidth: 100,
   },
   activeOtpLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: CampusTheme.colors.primary,
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
     letterSpacing: 0.5,
+    marginBottom: Glass.space.xs,
   },
   activeOtpCode: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: CampusTheme.colors.text,
+    fontSize: Glass.fontSize.xl,
+    fontWeight: Glass.fontWeight.black,
+    color: Glass.text,
     letterSpacing: 2,
   },
   activePaymentRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Glass.space.md,
   },
   activePaymentInfo: {
     flex: 1,
   },
   activePaymentTotal: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    marginBottom: Glass.space.xs,
   },
   activePaymentMethodText: {
-    fontSize: 11,
-    color: CampusTheme.colors.textMuted,
-    marginTop: 1,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
   },
-  switchUpiBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: CampusTheme.colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-  },
-  switchUpiBtnText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: CampusTheme.colors.background,
-  },
-  doneBtn: {
-    width: '100%',
-    backgroundColor: CampusTheme.colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  doneBtnText: {
-    color: CampusTheme.colors.background,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  upiIconHeader: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#1C3328',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  upiAmountText: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: CampusTheme.colors.primary,
-    marginTop: 4,
-    marginBottom: 6,
-  },
-  upiNoteText: {
-    fontSize: 12,
-    color: CampusTheme.colors.textMuted,
-    marginBottom: 18,
-    textAlign: 'center',
-  },
-  upiRefInputBox: {
-    width: '100%',
-    marginBottom: 16,
-  },
-  upiRefLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: CampusTheme.colors.primary,
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  upiInput: {
-    backgroundColor: '#0E1712',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(142, 228, 175, 0.25)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: CampusTheme.colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  upiFeedback: {
-    width: '100%',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 14,
-  },
-  upiSuccess: {
-    backgroundColor: 'rgba(52, 211, 153, 0.15)',
-  },
-  upiError: {
-    backgroundColor: 'rgba(248, 113, 113, 0.15)',
-  },
-  upiFeedbackText: {
-    fontSize: 12,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  upiSuccessText: {
-    color: CampusTheme.colors.primary,
-  },
-  upiErrorText: {
-    color: CampusTheme.colors.danger,
-  },
-  verifyPayBtn: {
-    width: '100%',
-    backgroundColor: CampusTheme.colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  verifyPayBtnText: {
-    color: CampusTheme.colors.background,
-    fontSize: 14,
-    fontWeight: '800',
-  },
+  // History
   historyCard: {
-    backgroundColor: '#15251E',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(142, 228, 175, 0.12)',
+    marginBottom: Glass.space.md,
   },
   historyTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: Glass.space.sm,
   },
   historyOrderNum: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
-  },
-  historyStatusPill: {
-    backgroundColor: CampusTheme.colors.primaryDim,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  historyStatusText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: CampusTheme.colors.primary,
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
   historyItemsText: {
-    fontSize: 13,
-    color: CampusTheme.colors.textMuted,
-    marginBottom: 10,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginBottom: Glass.space.md,
   },
   historyBottom: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-    paddingTop: 8,
+    alignItems: 'center',
+    marginBottom: Glass.space.sm,
   },
   historyTotal: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: CampusTheme.colors.text,
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
   historyPayText: {
-    fontSize: 12,
-    color: CampusTheme.colors.primary,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
   },
   historyOtpRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    backgroundColor: '#1C3328',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    gap: Glass.space.xs,
+    paddingTop: Glass.space.sm,
+    borderTopWidth: 1,
+    borderTopColor: Glass.borderSubtle,
   },
   historyOtpLabel: {
-    fontSize: 11,
-    color: CampusTheme.colors.textMuted,
-    fontWeight: '600',
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
   },
   historyOtpValue: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: CampusTheme.colors.primary,
-    letterSpacing: 2,
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
   },
 });

@@ -13,10 +13,19 @@ import {
   ActivityIndicator,
 } from 'react-native';
 
-import { CampusTheme } from '@/constants/theme';
+import { Glass } from '@/constants/glass-theme';
 import { useAuth } from '@/context/auth-context';
 import { DataService } from '@/services/data-service';
 import { College, UserProfile } from '@/types';
+import {
+  GlassCard,
+  GlassView,
+  GlassBadge,
+  GlassButton,
+  GlassSectionHeader,
+  GlassModal,
+  GlassInput,
+} from '@/components/ui/glass-components';
 
 export default function SuperAdminScreen() {
   const router = useRouter();
@@ -157,453 +166,245 @@ export default function SuperAdminScreen() {
   return (
     <View style={styles.safeContainer}>
       {/* SUPER ADMIN HEADER */}
-      <View style={styles.header}>
+      <GlassView variant="default" style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.badge}>
-            <Ionicons name="planet" size={18} color={CampusTheme.colors.background} />
-          </View>
+          <GlassView variant="default" style={styles.badge}>
+            <Ionicons name="planet" size={18} color={Glass.bg} />
+          </GlassView>
           <View>
             <View style={styles.adminNameRow}>
               <Text style={styles.headerTitle}>SUPER ADMIN PLATFORM</Text>
-              <View style={styles.superBadge}>
-                <Text style={styles.superBadgeText}>OMKUMAR G. INGALKAR</Text>
-              </View>
+              <GlassBadge variant="purple" size="sm">OMKUMAR G. INGALKAR</GlassBadge>
             </View>
             <Text style={styles.headerSub}>Platform Architect • @omkumar_01</Text>
           </View>
         </View>
 
         <View style={styles.headerRight}>
-          <Pressable style={styles.portalBtn} onPress={() => router.replace('/login')}>
-            <Ionicons name="swap-horizontal" size={15} color={CampusTheme.colors.primary} />
-            <Text style={styles.portalBtnText}>Portals</Text>
-          </Pressable>
-          <Pressable style={styles.logoutBtn} onPress={logout}>
-            <Ionicons name="log-out-outline" size={18} color={CampusTheme.colors.danger} />
-          </Pressable>
+          <GlassButton
+            variant="ghost"
+            size="sm"
+            leftIcon={<Ionicons name="swap-horizontal" size={15} color={Glass.purple} />}
+            onPress={() => router.replace('/login')}
+          >
+            Portals
+          </GlassButton>
+          <GlassButton
+            variant="danger"
+            size="sm"
+            leftIcon={<Ionicons name="log-out-outline" size={18} color={Glass.text} />}
+            onPress={logout}
+          >
+            Sign Out
+          </GlassButton>
         </View>
-      </View>
+      </GlassView>
 
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         {/* STATS OVERVIEW */}
         <View style={styles.statsRow}>
-          <View style={styles.statBox}>
+          <GlassCard variant="default" style={styles.statBox}>
             <Text style={styles.statValue}>{colleges.length}</Text>
             <Text style={styles.statLabel}>Active Campuses</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: '#C4AAFF' }]}>
-              {collegeAdmins.length}
-            </Text>
+          </GlassCard>
+          <GlassCard variant="default" style={styles.statBox}>
+            <Text style={[styles.statValue, { color: Glass.purple }]}>{collegeAdmins.length}</Text>
             <Text style={styles.statLabel}>College Admin IDs</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Ionicons name="shield-checkmark" size={20} color="#A78BFA" />
-            <Text style={styles.statLabel}>Exclusive Authority</Text>
-          </View>
+          </GlassCard>
+          <GlassCard variant="default" style={styles.statBox}>
+            <Text style={[styles.statValue, { color: Glass.teal }]}>
+              {colleges.reduce((sum, c) => sum + (c.studentCount || 0), 0).toLocaleString()}
+            </Text>
+            <Text style={styles.statLabel}>Total Students</Text>
+          </GlassCard>
         </View>
 
-        {/* SECTION 1: NETWORK OF CAMPUSES */}
-        <View style={styles.sectionHeaderRow}>
-          <View>
-            <Text style={styles.sectionTitle}>Network of Campuses</Text>
-            <Text style={styles.sectionSub}>Active institutional tenants operating on Campus Connect</Text>
-          </View>
-        </View>
+        {/* CAMPUS GRID */}
+        <GlassSectionHeader
+          title="Campus Management"
+          action={
+            <GlassButton variant="primary" size="sm" leftIcon={<Ionicons name="add" size={16} color={Glass.bg} />} onPress={handleOpenAddModal}>
+              Add Admin
+            </GlassButton>
+          }
+        />
 
-        <View style={styles.collegesList}>
-          {colleges.map((col) => {
-            const adminCount = collegeAdmins.filter((a) => a.collegeId === col.id).length;
-            return (
-              <View key={col.id} style={styles.collegeCard}>
-                <View style={styles.collegeTop}>
-                  <View style={styles.collegeLogo}>
-                    <Text style={styles.collegeCode}>{col.code}</Text>
-                  </View>
-                  <View style={styles.collegeInfo}>
-                    <Text style={styles.collegeName}>{col.name}</Text>
-                    <Text style={styles.collegeLocation}>
-                      {col.city}, {col.state}
-                    </Text>
-                  </View>
-                  <View style={styles.activePill}>
-                    <Text style={styles.activePillText}>{col.active ? 'ACTIVE' : 'INACTIVE'}</Text>
-                  </View>
+        <View style={styles.campusGrid}>
+          {colleges.map((college) => (
+            <GlassCard key={college.id} variant="interactive" style={styles.campusCard}>
+              <View style={styles.campusCardTop}>
+                <Text style={styles.campusName}>{college.name}</Text>
+                <GlassBadge variant="purple" size="sm">{college.shortName}</GlassBadge>
+              </View>
+              <Text style={styles.campusLocation}>
+                <Ionicons name="location-outline" size={12} color={Glass.purple} style={{ marginRight: 4 }} />
+                {college.city}, {college.state}
+              </Text>
+              <Text style={styles.campusDomain}>{college.domain}</Text>
+
+              <View style={styles.campusStats}>
+                <View style={styles.campusStat}>
+                  <Text style={styles.campusStatValue}>
+                    {collegeAdmins.filter((a) => a.collegeId === college.id).length}
+                  </Text>
+                  <Text style={styles.campusStatLabel}>Admins</Text>
                 </View>
-
-                <Text style={styles.collegeTagline}>{col.tagline}</Text>
-
-                <View style={styles.collegeBottomRow}>
-                  <View style={styles.tenantInfoCol}>
-                    <Text style={styles.tenantIdText}>Tenant ID: {col.id}</Text>
-                    <Text style={styles.tenantAdminCount}>
-                      {adminCount} {adminCount === 1 ? 'Admin ID' : 'Admin IDs'} Assigned
-                    </Text>
-                  </View>
-                  <Pressable
-                    style={styles.manageBtn}
-                    onPress={() => setSelectedCollegeForManage(col)}
-                  >
-                    <Ionicons name="settings-outline" size={13} color={CampusTheme.colors.primary} />
-                    <Text style={styles.manageBtnText}>Manage Tenant</Text>
-                  </Pressable>
+                <View style={styles.campusStat}>
+                  <Text style={styles.campusStatValue}>
+                    {(college.studentCount || 0).toLocaleString()}
+                  </Text>
+                  <Text style={styles.campusStatLabel}>Students</Text>
                 </View>
               </View>
-            );
-          })}
-        </View>
 
-        {/* SECTION 2: COLLEGE ADMINISTRATORS DIRECTORY */}
-        <View style={[styles.sectionHeaderRow, { marginTop: 28 }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>College Admin IDs</Text>
-            <Text style={styles.sectionSub}>
-              Only Super Admin can add or delete institutional College Admin IDs
-            </Text>
-          </View>
-          <Pressable
-            style={styles.addAdminHeaderBtn}
-            onPress={() => handleOpenAddModal()}
-          >
-            <Ionicons name="add-circle" size={16} color="#0D0018" />
-            <Text style={styles.addAdminHeaderBtnText}>+ Add College Admin ID</Text>
-          </Pressable>
-        </View>
-
-        {/* Campus Filter Pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
-          <Pressable
-            style={[styles.filterPill, filterCollegeId === 'all' && styles.activeFilterPill]}
-            onPress={() => setFilterCollegeId('all')}
-          >
-            <Text
-              style={[
-                styles.filterPillText,
-                filterCollegeId === 'all' && styles.activeFilterPillText,
-              ]}
-            >
-              All Campuses ({collegeAdmins.length})
-            </Text>
-          </Pressable>
-          {colleges.map((c) => {
-            const count = collegeAdmins.filter((a) => a.collegeId === c.id).length;
-            const isSelected = filterCollegeId === c.id;
-            return (
-              <Pressable
-                key={c.id}
-                style={[styles.filterPill, isSelected && styles.activeFilterPill]}
-                onPress={() => setFilterCollegeId(c.id)}
-              >
-                <Text
-                  style={[
-                    styles.filterPillText,
-                    isSelected && styles.activeFilterPillText,
-                  ]}
+              <View style={styles.campusActions}>
+                <GlassButton
+                  variant="secondary"
+                  size="sm"
+                  onPress={handleOpenAddModal.bind(null, college.id)}
+                  style={{ flex: 1 }}
                 >
-                  {c.shortName} ({count})
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+                  Add Admin
+                </GlassButton>
+                <GlassButton
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => {
+                    setSelectedCollegeForManage(college);
+                    setFilterCollegeId(college.id);
+                  }}
+                  style={{ flex: 1 }}
+                >
+                  Manage
+                </GlassButton>
+              </View>
+            </GlassCard>
+          ))}
+        </View>
 
-        {/* College Admins Cards List */}
-        {filteredAdmins.length === 0 ? (
-          <View style={styles.emptyAdminsCard}>
-            <Ionicons name="shield-outline" size={36} color={CampusTheme.colors.textDim} />
-            <Text style={styles.emptyAdminsTitle}>No College Admin IDs Found</Text>
-            <Text style={styles.emptyAdminsSub}>
-              {filterCollegeId === 'all'
-                ? 'No College Admin IDs have been provisioned yet. Use the button below to create one.'
-                : 'No College Admin ID is currently assigned to this campus.'}
-            </Text>
-            <Pressable
-              style={styles.emptyAddBtn}
-              onPress={() => handleOpenAddModal(filterCollegeId !== 'all' ? filterCollegeId : undefined)}
-            >
-              <Ionicons name="add" size={16} color="#0D0018" />
-              <Text style={styles.emptyAddBtnText}>Create College Admin ID</Text>
-            </Pressable>
-          </View>
+        {/* COLLEGE ADMIN LIST */}
+        <GlassSectionHeader
+          title={`College Admin IDs ${filterCollegeId !== 'all' ? `· ${getCollegeForAdmin(filterCollegeId)?.shortName}` : ''}`}
+          count={filteredAdmins.length}
+        />
+
+        {loading ? (
+          <GlassCard variant="default" style={styles.loadingCard}>
+            <ActivityIndicator color={Glass.purple} size="large" />
+          </GlassCard>
+        ) : filteredAdmins.length === 0 ? (
+          <GlassCard variant="default" style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No College Admins found.</Text>
+            <GlassButton variant="primary" size="md" onPress={handleOpenAddModal} style={{ marginTop: Glass.space.md }}>
+              Create First Admin
+            </GlassButton>
+          </GlassCard>
         ) : (
-          <View style={styles.adminsList}>
-            {filteredAdmins.map((admin) => {
-              const col = getCollegeForAdmin(admin.collegeId);
-              return (
-                <View key={admin.uid} style={styles.adminCard}>
-                  <View style={styles.adminCardLeft}>
-                    <View style={styles.adminAvatar}>
-                      <Text style={styles.adminInitial}>
-                        {admin.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={styles.adminDetails}>
-                      <View style={styles.adminNameLine}>
-                        <Text style={styles.adminName}>{admin.name}</Text>
-                        <View style={styles.adminBadge}>
-                          <Text style={styles.adminBadgeText}>COLLEGE ADMIN</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.adminEmail}>{admin.email}</Text>
-                      <Text style={styles.adminDesignation}>{admin.designation || 'Administrator'}</Text>
-                      <View style={styles.adminCollegeTag}>
-                        <Ionicons name="business" size={11} color={CampusTheme.colors.primary} />
-                        <Text style={styles.adminCollegeTagText}>
-                          {col?.name || admin.collegeId}
-                        </Text>
-                      </View>
+          <View style={styles.adminList}>
+            {filteredAdmins.map((admin) => (
+              <GlassCard key={admin.uid} variant="default" style={styles.adminCard}>
+                <View style={styles.adminInfo}>
+                  <GlassView variant="default" style={styles.adminAvatar}>
+                    <Text style={styles.adminAvatarText}>{admin.name.charAt(0).toUpperCase()}</Text>
+                  </GlassView>
+                  <View>
+                    <Text style={styles.adminName}>{admin.name}</Text>
+                    <Text style={styles.adminEmail}>{admin.email}</Text>
+                    <Text style={styles.adminDesignation}>{admin.designation}</Text>
+                    <View style={styles.adminMetaRow}>
+                      <GlassBadge variant="purple" size="xs">
+                        {getCollegeForAdmin(admin.collegeId)?.shortName || admin.collegeId}
+                      </GlassBadge>
+                      <GlassBadge variant="teal" size="xs">
+                        {admin.permissions?.length || 0} permissions
+                      </GlassBadge>
                     </View>
                   </View>
-
-                  <Pressable
-                    style={styles.deleteAdminBtn}
-                    onPress={() => handleDeleteAdmin(admin)}
-                  >
-                    <Ionicons name="trash-outline" size={16} color={CampusTheme.colors.danger} />
-                    <Text style={styles.deleteAdminBtnText}>Delete ID</Text>
-                  </Pressable>
                 </View>
-              );
-            })}
+                <Pressable
+                  style={styles.adminDeleteBtn}
+                  onPress={() => handleDeleteAdmin(admin)}
+                >
+                  <Ionicons name="trash-outline" size={20} color={Glass.danger} />
+                </Pressable>
+              </GlassCard>
+            ))}
           </View>
         )}
 
-        {/* INSTITUTIONAL PRIVILEGE & GOVERNANCE BOUNDARIES */}
-        <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Platform Governance & Boundaries</Text>
-        <Text style={styles.sectionSub}>Strict enforcement of institutional separation</Text>
-        <View style={styles.statusGrid}>
-          <View style={styles.statusCard}>
-            <Ionicons name="key" size={24} color={CampusTheme.colors.primary} />
-            <Text style={styles.statusTitle}>Super Admin Authority</Text>
-            <Text style={styles.statusSub}>
-              Sole authority to provision & delete College Admin IDs. Restrained from altering college 360 views or creating teacher/food court IDs.
-            </Text>
-          </View>
-
-          <View style={styles.statusCard}>
-            <Ionicons name="image" size={24} color="#60A5FA" />
-            <Text style={styles.statusTitle}>College Admin Autonomy</Text>
-            <Text style={styles.statusSub}>
-              Exclusively curates college 360° virtual spaces and creates Teacher & Food Court staff IDs for their campus.
-            </Text>
-          </View>
-        </View>
+        {/* FOOTER */}
+        <Text style={styles.footerText}>
+          Campus Connect Super Admin Platform • Built by OMKUMAR G. INGALKAR
+        </Text>
       </ScrollView>
 
-      {/* MODAL 1: ADD COLLEGE ADMIN ID */}
-      <Modal
-        visible={showAddAdminModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowAddAdminModal(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>+ Add College Admin ID</Text>
-                <Text style={styles.modalSub}>
-                  Issue administrative credentials for a campus tenant
-                </Text>
-              </View>
-              <Pressable
-                style={styles.modalCloseBtn}
-                onPress={() => setShowAddAdminModal(false)}
-              >
-                <Ionicons name="close" size={20} color={CampusTheme.colors.textMuted} />
+      {/* ADD ADMIN MODAL */}
+      <GlassModal visible={showAddAdminModal} onClose={() => setShowAddAdminModal(false)} size="md">
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Create College Admin ID</Text>
+          <Text style={styles.modalSub}>Issue administrative credentials for a campus</Text>
+
+          <GlassInput
+            label="Full Name"
+            placeholder="Prof. Sneha Deshmukh"
+            value={newAdminName}
+            onChangeText={setNewAdminName}
+            icon="person-outline"
+          />
+
+          <GlassInput
+            label="Campus Email"
+            placeholder="admin@college.edu"
+            value={newAdminEmail}
+            onChangeText={setNewAdminEmail}
+            icon="mail-outline"
+            keyboardType="email-address"
+          />
+
+          <GlassInput
+            label="Password"
+            placeholder="••••••••"
+            value={newAdminPassword}
+            onChangeText={setNewAdminPassword}
+            icon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+            secureTextEntry={!showPassword}
+            rightElement={
+              <Pressable onPress={() => setShowPassword(!showPassword)}>
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={Glass.textMuted} />
               </Pressable>
+            }
+          />
+
+          <GlassInput
+            label="Designation (Optional)"
+            placeholder="Campus Administrator & Dean"
+            value={newAdminDesignation}
+            onChangeText={setNewAdminDesignation}
+            icon="briefcase-outline"
+          />
+
+          <View style={styles.modalField}>
+            <Text style={styles.modalLabel}>Assign to College</Text>
+            <View style={styles.modalSelect}>
+              <TextInput
+                style={styles.modalSelectText}
+                value={colleges.find((c) => c.id === newAdminCollegeId)?.name || 'Select College'}
+                editable={false}
+              />
+              <Ionicons name="chevron-down" size={18} color={Glass.textMuted} />
             </View>
+          </View>
 
-            <ScrollView style={styles.modalFormScroll}>
-              {/* Target Campus Selector */}
-              <Text style={styles.inputLabel}>Select Campus Institution *</Text>
-              <View style={styles.modalCollegePicker}>
-                {colleges.map((c) => (
-                  <Pressable
-                    key={c.id}
-                    style={[
-                      styles.modalCollegePill,
-                      newAdminCollegeId === c.id && styles.modalCollegePillActive,
-                    ]}
-                    onPress={() => setNewAdminCollegeId(c.id)}
-                  >
-                    <Text
-                      style={[
-                        styles.modalCollegePillText,
-                        newAdminCollegeId === c.id && styles.modalCollegePillTextActive,
-                      ]}
-                    >
-                      {c.shortName}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              {/* Admin Full Name */}
-              <Text style={styles.inputLabel}>Admin Full Name *</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="e.g. Dr. Rajesh Sharma"
-                placeholderTextColor={CampusTheme.colors.textDim}
-                value={newAdminName}
-                onChangeText={setNewAdminName}
-              />
-
-              {/* Campus Email Address */}
-              <Text style={styles.inputLabel}>Campus Email Address *</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="e.g. admin@jspm.edu"
-                placeholderTextColor={CampusTheme.colors.textDim}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={newAdminEmail}
-                onChangeText={setNewAdminEmail}
-              />
-
-              {/* Password */}
-              <Text style={styles.inputLabel}>Assign Password (min 6 chars) *</Text>
-              <View style={styles.passwordInputRow}>
-                <TextInput
-                  style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
-                  placeholder="e.g. AdminPass123!"
-                  placeholderTextColor={CampusTheme.colors.textDim}
-                  secureTextEntry={!showPassword}
-                  value={newAdminPassword}
-                  onChangeText={setNewAdminPassword}
-                />
-                <Pressable
-                  style={styles.eyeBtn}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off' : 'eye'}
-                    size={18}
-                    color={CampusTheme.colors.textMuted}
-                  />
-                </Pressable>
-              </View>
-
-              {/* Designation */}
-              <Text style={styles.inputLabel}>Institutional Designation / Role</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="e.g. Dean of Academics & Campus Administrator"
-                placeholderTextColor={CampusTheme.colors.textDim}
-                value={newAdminDesignation}
-                onChangeText={setNewAdminDesignation}
-              />
-
-              {/* Notice */}
-              <View style={styles.modalInfoBox}>
-                <Ionicons name="information-circle" size={16} color={CampusTheme.colors.primary} />
-                <Text style={styles.modalInfoText}>
-                  This College Admin will have exclusive authority to curate 360° spaces, create teacher IDs, and manage food court staff for their campus.
-                </Text>
-              </View>
-
-              <Pressable
-                style={[styles.modalSubmitBtn, submitting && { opacity: 0.7 }]}
-                onPress={handleCreateAdmin}
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <ActivityIndicator color="#0D1411" />
-                ) : (
-                  <>
-                    <Ionicons name="shield-checkmark" size={16} color="#0D1411" />
-                    <Text style={styles.modalSubmitBtnText}>Create College Admin ID</Text>
-                  </>
-                )}
-              </Pressable>
-            </ScrollView>
+          <View style={styles.modalActions}>
+            <GlassButton variant="secondary" size="md" onPress={() => setShowAddAdminModal(false)} style={{ flex: 1 }}>
+              Cancel
+            </GlassButton>
+            <GlassButton variant="primary" size="md" onPress={handleCreateAdmin} disabled={submitting} style={{ flex: 1 }}>
+              {submitting ? <ActivityIndicator color={Glass.bg} size="small" /> : 'Create Admin ID'}
+            </GlassButton>
           </View>
         </View>
-      </Modal>
-
-      {/* MODAL 2: MANAGE TENANT */}
-      <Modal
-        visible={!!selectedCollegeForManage}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedCollegeForManage(null)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>{selectedCollegeForManage?.name}</Text>
-                <Text style={styles.modalSub}>
-                  Tenant ID: {selectedCollegeForManage?.id} • {selectedCollegeForManage?.city}, {selectedCollegeForManage?.state}
-                </Text>
-              </View>
-              <Pressable
-                style={styles.modalCloseBtn}
-                onPress={() => setSelectedCollegeForManage(null)}
-              >
-                <Ionicons name="close" size={20} color={CampusTheme.colors.textMuted} />
-              </Pressable>
-            </View>
-
-            <ScrollView style={styles.modalFormScroll}>
-              <View style={styles.tenantModalHeaderRow}>
-                <Text style={styles.tenantSectionTitle}>Assigned College Admin IDs</Text>
-                <Pressable
-                  style={styles.tenantAddBtn}
-                  onPress={() => {
-                    const cid = selectedCollegeForManage?.id;
-                    setSelectedCollegeForManage(null);
-                    handleOpenAddModal(cid);
-                  }}
-                >
-                  <Ionicons name="add" size={14} color="#0D0018" />
-                  <Text style={styles.tenantAddBtnText}>+ Add Admin</Text>
-                </Pressable>
-              </View>
-
-              {collegeAdmins.filter((a) => a.collegeId === selectedCollegeForManage?.id).length === 0 ? (
-                <View style={styles.tenantEmptyBox}>
-                  <Ionicons name="person-outline" size={28} color={CampusTheme.colors.textDim} />
-                  <Text style={styles.tenantEmptyTitle}>No Administrators Assigned</Text>
-                  <Text style={styles.tenantEmptySub}>
-                    This campus has no active College Admin IDs. Use "+ Add Admin" above to provision an administrator.
-                  </Text>
-                </View>
-              ) : (
-                <View style={{ gap: 10, marginTop: 10 }}>
-                  {collegeAdmins
-                    .filter((a) => a.collegeId === selectedCollegeForManage?.id)
-                    .map((adm) => (
-                      <View key={adm.uid} style={styles.tenantAdminItem}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.tenantAdminName}>{adm.name}</Text>
-                          <Text style={styles.tenantAdminEmail}>{adm.email}</Text>
-                          <Text style={styles.tenantAdminDesig}>{adm.designation || 'Administrator'}</Text>
-                        </View>
-                        <Pressable
-                          style={styles.deleteAdminSmallBtn}
-                          onPress={() => {
-                            setSelectedCollegeForManage(null);
-                            handleDeleteAdmin(adm);
-                          }}
-                        >
-                          <Ionicons name="trash-outline" size={15} color={CampusTheme.colors.danger} />
-                        </Pressable>
-                      </View>
-                    ))}
-                </View>
-              )}
-
-              <View style={[styles.modalInfoBox, { marginTop: 18 }]}>
-                <Ionicons name="lock-closed" size={16} color={CampusTheme.colors.primary} />
-                <Text style={styles.modalInfoText}>
-                  College 360° views and campus staff credentials can only be edited by the College Admins listed above. Super Admin governs tenant provisioning.
-                </Text>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      </GlassModal>
     </View>
   );
 }
@@ -611,649 +412,263 @@ export default function SuperAdminScreen() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#0A0010',
+    backgroundColor: Glass.bg,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: Glass.space.md,
     paddingTop: 50,
-    paddingBottom: 16,
-    backgroundColor: '#0D0018',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(196,170,255,0.12)',
+    paddingBottom: Glass.space.md,
+    marginBottom: Glass.space.md,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: Glass.space.md,
   },
   badge: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#A78BFA',
+    width: 44,
+    height: 44,
+    borderRadius: Glass.radius.md,
+    backgroundColor: Glass.purpleBright,
     alignItems: 'center',
     justifyContent: 'center',
   },
   adminNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Glass.space.sm,
+    flexWrap: 'wrap',
   },
   headerTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  superBadge: {
-    backgroundColor: 'rgba(167, 139, 250, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.3)',
-  },
-  superBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#C4B5FD',
-    letterSpacing: 0.3,
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.purple,
+    letterSpacing: 1,
   },
   headerSub: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 2,
+    fontSize: Glass.fontSize.md,
+    color: Glass.textSub,
+    marginTop: 1,
+    fontWeight: Glass.fontWeight.medium,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  portalBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(196,170,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.2)',
-  },
-  portalBtnText: {
-    color: '#C4AAFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  logoutBtn: {
-    padding: 6,
+    gap: Glass.space.sm,
   },
   container: {
     flex: 1,
   },
   contentContainer: {
-    padding: 18,
-    paddingBottom: 50,
-    maxWidth: 720,
+    paddingHorizontal: Glass.space.md,
+    paddingBottom: Glass.space.xl,
+    maxWidth: Glass.maxContentWidth,
     alignSelf: 'center',
     width: '100%',
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    gap: Glass.space.md,
+    marginBottom: Glass.space.xl,
   },
   statBox: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 14,
-    padding: 12,
+    padding: Glass.space.md,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.1)',
+    borderRadius: Glass.radius.lg,
   },
   statValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: Glass.fontSize.xxl,
+    fontWeight: Glass.fontWeight.black,
+    color: Glass.text,
   },
   statLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 2,
-    textAlign: 'center',
-    fontWeight: '600',
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.semibold,
+    color: Glass.textMuted,
+    marginTop: Glass.space.xs,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
-  sectionHeaderRow: {
+  campusGrid: {
+    gap: Glass.space.md,
+    marginBottom: Glass.space.xl,
+  },
+  campusCard: {
+    padding: Glass.space.md,
+  },
+  campusCardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Glass.space.xs,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
+  campusName: {
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
-  sectionSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 2,
-  },
-  addAdminHeaderBtn: {
+  campusLocation: {
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginBottom: Glass.space.xs,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#9B5CFF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
   },
-  addAdminHeaderBtnText: {
-    color: '#0D0018',
-    fontSize: 11,
-    fontWeight: '800',
+  campusDomain: {
+    fontSize: Glass.fontSize.xs,
+    color: Glass.textDim,
+    marginBottom: Glass.space.md,
+    fontFamily: 'monospace',
   },
-  collegesList: {
-    gap: 14,
-  },
-  collegeCard: {
-    backgroundColor: 'rgba(196,170,255,0.06)',
-    borderRadius: 18,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.15)',
-    ...CampusTheme.shadows.card,
-  },
-  collegeTop: {
+  campusStats: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 10,
-  },
-  collegeLogo: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(196,170,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    bordercolor: '#C4AAFF',
-  },
-  collegeCode: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#C4AAFF',
-  },
-  collegeInfo: {
-    flex: 1,
-  },
-  collegeName: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  collegeLocation: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 2,
-  },
-  activePill: {
-    backgroundColor: 'rgba(196,170,255,0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  activePillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#C4AAFF',
-  },
-  collegeTagline: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
-    fontStyle: 'italic',
-    marginBottom: 12,
-  },
-  collegeBottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    justifyContent: 'space-around',
+    marginBottom: Glass.space.md,
+    paddingVertical: Glass.space.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-    paddingTop: 10,
+    borderBottomWidth: 1,
+    borderColor: Glass.border,
   },
-  tenantInfoCol: {
-    flex: 1,
-  },
-  tenantIdText: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.3)',
-  },
-  tenantAdminCount: {
-    fontSize: 11,
-    color: '#C4AAFF',
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  manageBtn: {
-    flexDirection: 'row',
+  campusStat: {
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(196,170,255,0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.2)',
   },
-  manageBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#C4AAFF',
+  campusStatValue: {
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.black,
+    color: Glass.text,
   },
-  filterBar: {
+  campusStatLabel: {
+    fontSize: Glass.fontSize.xs,
+    color: Glass.textMuted,
+    fontWeight: Glass.fontWeight.semibold,
+    marginTop: Glass.space.xs,
+  },
+  campusActions: {
     flexDirection: 'row',
-    marginVertical: 12,
+    gap: Glass.space.sm,
   },
-  filterPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.1)',
-    marginRight: 8,
-  },
-  activeFilterPill: {
-    backgroundColor: 'rgba(196,170,255,0.12)',
-    bordercolor: '#C4AAFF',
-  },
-  filterPillText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
-    fontWeight: '600',
-  },
-  activeFilterPillText: {
-    color: '#C4AAFF',
-    fontWeight: '800',
-  },
-  emptyAdminsCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.1)',
-    marginVertical: 10,
-  },
-  emptyAdminsTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginTop: 10,
-  },
-  emptyAdminsSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
-    textAlign: 'center',
-    marginTop: 4,
-    maxWidth: 400,
-  },
-  emptyAddBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#9B5CFF',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 14,
-  },
-  emptyAddBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0D0018',
-  },
-  adminsList: {
-    gap: 10,
-    marginTop: 6,
+  adminList: {
+    gap: Glass.space.md,
+    marginBottom: Glass.space.xl,
   },
   adminCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.12)',
+    padding: Glass.space.md,
   },
-  adminCardLeft: {
+  adminInfo: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
+    alignItems: 'center',
+    gap: Glass.space.md,
     flex: 1,
   },
   adminAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: 'rgba(196,170,255,0.1)',
+    width: 44,
+    height: 44,
+    borderRadius: Glass.radius.circle,
+    backgroundColor: Glass.purpleDim,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    bordercolor: '#C4AAFF',
   },
-  adminInitial: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#C4AAFF',
-  },
-  adminDetails: {
-    flex: 1,
-  },
-  adminNameLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  adminAvatarText: {
+    fontSize: Glass.fontSize.lg,
+    fontWeight: Glass.fontWeight.black,
+    color: Glass.purple,
   },
   adminName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  adminBadge: {
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.3)',
-  },
-  adminBadgeText: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: '#FBBF24',
+    fontSize: Glass.fontSize.md,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
   },
   adminEmail: {
-    fontSize: 12,
-    color: '#C4AAFF',
-    marginTop: 2,
+    fontSize: Glass.fontSize.sm,
+    color: Glass.textMuted,
+    marginTop: Glass.space.xs,
   },
   adminDesignation: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 2,
+    fontSize: Glass.fontSize.xs,
+    color: Glass.purple,
+    fontWeight: Glass.fontWeight.semibold,
+    marginTop: Glass.space.xs,
   },
-  adminCollegeTag: {
+  adminMetaRow: {
     flexDirection: 'row',
+    gap: Glass.space.xs,
+    marginTop: Glass.space.sm,
+  },
+  adminDeleteBtn: {
+    padding: Glass.space.xs,
+  },
+  loadingCard: {
     alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
+    paddingVertical: Glass.space.xl,
   },
-  adminCollegeTagText: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.3)',
-    fontWeight: '600',
-  },
-  deleteAdminBtn: {
-    flexDirection: 'row',
+  emptyCard: {
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    marginLeft: 10,
+    paddingVertical: Glass.space.xl,
   },
-  deleteAdminBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: CampusTheme.colors.danger,
+  emptyText: {
+    color: Glass.textMuted,
+    marginBottom: Glass.space.md,
   },
-  statusGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  statusCard: {
-    flex: 1,
-    backgroundColor: 'rgba(196,170,255,0.06)',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.12)',
-    alignItems: 'center',
-  },
-  statusTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  statusSub: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 4,
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  // Modals
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 520,
-    maxHeight: '85%',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.2)',
-    padding: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-    paddingBottom: 14,
-    marginBottom: 14,
+  modalContent: {
+    padding: Glass.space.md,
+    gap: Glass.space.md,
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: Glass.fontSize.xl,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.text,
+    textAlign: 'center',
   },
   modalSub: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 2,
-  },
-  modalCloseBtn: {
-    padding: 4,
-  },
-  modalFormScroll: {
-    flexGrow: 0,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 6,
-    marginTop: 10,
-  },
-  modalCollegePicker: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 6,
-  },
-  modalCollegePill: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: '#0D0018',
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.15)',
-  },
-  modalCollegePillActive: {
-    backgroundColor: 'rgba(196,170,255,0.12)',
-    bordercolor: '#C4AAFF',
-  },
-  modalCollegePillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.45)',
-  },
-  modalCollegePillTextActive: {
-    color: '#C4AAFF',
-  },
-  textInput: {
-    backgroundColor: '#0D0018',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    color: '#FFFFFF',
-    fontSize: 13,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.15)',
-    marginBottom: 6,
-  },
-  passwordInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  eyeBtn: {
-    padding: 10,
-    backgroundColor: '#0D0018',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.15)',
-  },
-  modalInfoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: '#0D0018',
-    borderRadius: 10,
-    padding: 12,
-    marginVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.1)',
-  },
-  modalInfoText: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.45)',
-    flex: 1,
-    lineHeight: 16,
-  },
-  modalSubmitBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#9B5CFF',
-    borderRadius: 12,
-    paddingVertical: 13,
-    marginTop: 6,
-    marginBottom: 8,
-  },
-  modalSubmitBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0D0018',
-  },
-  tenantModalHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  tenantSectionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  tenantAddBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#9B5CFF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  tenantAddBtnText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0D0018',
-  },
-  tenantEmptyBox: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0D0018',
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  tenantEmptyTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 8,
-  },
-  tenantEmptySub: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.45)',
+    fontSize: Glass.fontSize.md,
+    color: Glass.textMuted,
     textAlign: 'center',
-    marginTop: 2,
+    marginBottom: Glass.space.md,
   },
-  tenantAdminItem: {
+  modalField: {
+    marginBottom: Glass.space.sm,
+  },
+  modalLabel: {
+    fontSize: Glass.fontSize.xs,
+    fontWeight: Glass.fontWeight.extrabold,
+    color: Glass.textMuted,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: Glass.space.xs,
+  },
+  modalSelect: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0D0018',
-    borderRadius: 10,
-    padding: 12,
+    alignItems: 'center',
+    backgroundColor: Glass.bgInput,
+    borderRadius: Glass.radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(196,170,255,0.1)',
+    borderColor: Glass.border,
+    paddingHorizontal: Glass.space.md,
+    paddingVertical: Glass.space.sm,
   },
-  tenantAdminName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  modalSelectText: {
+    color: Glass.text,
+    fontSize: Glass.fontSize.md,
   },
-  tenantAdminEmail: {
-    fontSize: 11,
-    color: '#C4AAFF',
-    marginTop: 1,
+  modalActions: {
+    flexDirection: 'row',
+    gap: Glass.space.md,
+    marginTop: Glass.space.md,
   },
-  tenantAdminDesig: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 1,
-  },
-  deleteAdminSmallBtn: {
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+  footerText: {
+    textAlign: 'center',
+    color: Glass.textDim,
+    fontSize: Glass.fontSize.sm,
+    fontWeight: Glass.fontWeight.medium,
+    marginTop: Glass.space.xl,
   },
 });

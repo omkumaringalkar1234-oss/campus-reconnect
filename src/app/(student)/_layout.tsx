@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { StyleSheet, View, Text, Platform } from 'react-native';
+import { StyleSheet, View, Platform } from 'react-native';
 
-import { CampusTheme } from '@/constants/theme';
+import { Glass } from '@/constants/glass-theme';
 import { useAppTheme } from '@/context/theme-context';
 
 export default function StudentTabLayout() {
-  const { colors, isDark } = useAppTheme();
+  const { glass } = useAppTheme();
 
   return (
     <Tabs
@@ -16,15 +16,16 @@ export default function StudentTabLayout() {
         tabBarStyle: [
           styles.tabBar,
           {
-            backgroundColor: '#0D0018',
-            borderTopColor: 'rgba(196,170,255,0.15)',
+            backgroundColor: glass.bgElevated,
+            borderTopColor: glass.border,
+            borderTopWidth: 1,
           },
         ],
         tabBarShowLabel: true,
-        tabBarActiveTintColor: '#C4AAFF',
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.3)',
+        tabBarActiveTintColor: glass.purple,
+        tabBarInactiveTintColor: glass.textDim,
         tabBarLabelStyle: styles.tabLabel,
-        sceneStyle: { backgroundColor: '#0A0010' },
+        sceneStyle: { backgroundColor: glass.bg },
       }}
     >
       <Tabs.Screen
@@ -35,13 +36,13 @@ export default function StudentTabLayout() {
             <View
               style={[
                 styles.iconWrapper,
-                focused && { backgroundColor: 'rgba(196,170,255,0.2)' },
+                focused && { backgroundColor: glass.purpleDim },
               ]}
             >
               <Ionicons
                 name={focused ? 'home' : 'home-outline'}
-                size={20}
-                color={focused ? '#C4AAFF' : 'rgba(255,255,255,0.3)'}
+                size={22}
+                color={focused ? glass.purple : glass.textDim}
               />
             </View>
           ),
@@ -56,13 +57,13 @@ export default function StudentTabLayout() {
             <View
               style={[
                 styles.iconWrapper,
-                focused && { backgroundColor: 'rgba(196,170,255,0.2)' },
+                focused && { backgroundColor: glass.purpleDim },
               ]}
             >
               <Ionicons
                 name={focused ? 'compass' : 'compass-outline'}
                 size={22}
-                color={focused ? '#C4AAFF' : 'rgba(255,255,255,0.3)'}
+                color={focused ? glass.purple : glass.textDim}
               />
             </View>
           ),
@@ -77,13 +78,13 @@ export default function StudentTabLayout() {
             <View
               style={[
                 styles.iconWrapper,
-                focused && { backgroundColor: 'rgba(196,170,255,0.2)' },
+                focused && { backgroundColor: glass.purpleDim },
               ]}
             >
               <Ionicons
                 name={focused ? 'restaurant' : 'restaurant-outline'}
-                size={20}
-                color={focused ? '#C4AAFF' : 'rgba(255,255,255,0.3)'}
+                size={22}
+                color={focused ? glass.purple : glass.textDim}
               />
             </View>
           ),
@@ -98,13 +99,13 @@ export default function StudentTabLayout() {
             <View
               style={[
                 styles.iconWrapper,
-                focused && { backgroundColor: 'rgba(196,170,255,0.2)' },
+                focused && { backgroundColor: glass.purpleDim },
               ]}
             >
               <Ionicons
                 name={focused ? 'calendar' : 'calendar-outline'}
-                size={20}
-                color={focused ? '#C4AAFF' : 'rgba(255,255,255,0.3)'}
+                size={22}
+                color={focused ? glass.purple : glass.textDim}
               />
             </View>
           ),
@@ -119,13 +120,13 @@ export default function StudentTabLayout() {
             <View
               style={[
                 styles.iconWrapper,
-                focused && { backgroundColor: 'rgba(196,170,255,0.2)' },
+                focused && { backgroundColor: glass.purpleDim },
               ]}
             >
               <Ionicons
                 name={focused ? 'person-circle' : 'person-circle-outline'}
                 size={22}
-                color={focused ? '#C4AAFF' : 'rgba(255,255,255,0.3)'}
+                color={focused ? glass.purple : glass.textDim}
               />
             </View>
           ),
@@ -137,17 +138,24 @@ export default function StudentTabLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#0D0018',
+    backgroundColor: Glass.bgElevated,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(196,170,255,0.15)',
-    height: Platform.OS === 'ios' ? 88 : 72,
-    paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+    borderTopColor: Glass.border,
+    height: Platform.OS === 'ios' ? 92 : 76,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 12,
+    ...Platform.select({
+      web: {
+        backdropFilter: Glass.blur.heavy,
+        WebkitBackdropFilter: Glass.blur.heavy,
+      },
+    }),
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    marginTop: 2,
+    marginTop: 3,
+    letterSpacing: 0.2,
   },
   iconWrapper: {
     width: 44,
@@ -155,8 +163,5 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  activeIconWrapper: {
-    backgroundColor: CampusTheme.colors.primary,
   },
 });
