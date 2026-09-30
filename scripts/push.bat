@@ -1,3 +1,2 @@
-git add -A
-git commit -m "feat: apply purple glass theme to all internal screens (admin, super-admin, profile, campus)"
+git commit --allow-empty -m "chore: trigger vercel redeploy"
 git push origin main
