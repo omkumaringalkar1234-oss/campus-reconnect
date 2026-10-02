@@ -4370,9 +4370,24 @@ export function getDivisionSchedule(
 ): DaySchedule[] | undefined {
   const branch = getBranchData(branchId);
   if (!branch) return undefined;
-  const division = branch.divisions.find((d) => d.divisionId === divisionId);
+  let division = branch.divisions.find((d) => d.divisionId === divisionId);
+  if (!division) {
+    division =
+      branch.divisions.find(
+        (d) => d.divisionId.toLowerCase() === divisionId.toLowerCase()
+      ) || branch.divisions[0];
+  }
   if (!division) return undefined;
-  const batch = division.batches.find((b) => b.batchId === batchId);
+  const numOnly = batchId.replace(/\D/g, '');
+  let batch = division.batches.find(
+    (b) =>
+      b.batchId === batchId ||
+      (numOnly && b.batchLabel.endsWith(numOnly)) ||
+      (numOnly && b.batchId.endsWith(numOnly))
+  );
+  if (!batch) {
+    batch = division.batches[0];
+  }
   return batch?.schedule;
 }
 

@@ -535,6 +535,7 @@ export default function ScheduleScreen() {
       <ScheduleOnboardingWizard
         visible={showOnboarding}
         onComplete={handleOnboardingComplete}
+        onClose={() => setShowOnboarding(false)}
       />
 
       <ScrollView
