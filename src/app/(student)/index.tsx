@@ -9,7 +9,9 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    View
+    View,
+    Platform,
+    Alert,
 } from 'react-native';
 
 import {
@@ -189,6 +191,37 @@ export default function StudentHomeScreen() {
     return currentIndex >= stepIndex;
   };
 
+  const handleCancelOrder = (orderId: string) => {
+    const doCancel = async () => {
+      try {
+        await DataService.cancelOrder(orderId, 'Cancelled by student (mistaken order)', profile?.uid);
+        await loadDashboardData();
+        if (Platform.OS === 'web') {
+          alert('Order was cancelled successfully.');
+        } else {
+          Alert.alert('Order Cancelled', 'Your order has been cancelled.');
+        }
+      } catch (err: any) {
+        alert(err.message || 'Could not cancel order');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to cancel this order? If you ordered mistakenly, this will immediately cancel it.')) {
+        doCancel();
+      }
+    } else {
+      Alert.alert(
+        'Cancel Order',
+        'Are you sure you want to cancel this order? If you ordered mistakenly, this will immediately cancel it.',
+        [
+          { text: 'Keep Order', style: 'cancel' },
+          { text: 'Yes, Cancel Order', style: 'destructive', onPress: doCancel },
+        ]
+      );
+    }
+  };
+
   const open360Spot = (spotId?: string) => {
     const defaultSpot: Campus360Location = {
       id: 'loc_360_jspm_main',
@@ -232,7 +265,9 @@ export default function StudentHomeScreen() {
             <Text style={styles.greetingTitle}>
               Hey, {profile?.name?.split(' ')[0] || 'Aarav'}
             </Text>
-            <Text style={styles.dateSubtitle}>Monday, 21 September · make it count</Text>
+            <Text style={styles.dateSubtitle}>
+              {new Intl.DateTimeFormat('en-US', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())} · make it count
+            </Text>
           </View>
 
           <Pressable
@@ -243,177 +278,9 @@ export default function StudentHomeScreen() {
           </Pressable>
         </View>
 
-        {/* ACADEMIC IDENTITY CARD */}
-        <GlassCard variant="elevated" style={styles.academicCard}>
-          <Text style={styles.academicCollegeName}>
-            {college?.name || "JSPM's Tathawade Technical Campus"}
-          </Text>
-          <Text style={[styles.academicMeta, { color: glass.purple }]}>
-            {profile?.department || 'Information Technology'} · {profile?.year || '3rd Year'} ·{' '}
-            {profile?.division || 'Div A'}
-          </Text>
-        </GlassCard>
-
-        {/* 4 QUICK ACTION PILLS */}
-        <View style={styles.quickActionsRow}>
-          <QuickActionPill
-            icon={<Ionicons name="compass" size={24} color={glass.purple} />}
-            label="Explore"
-            subLabel="Campus"
-            onPress={() => router.push('/(student)/campus' as any)}
-            color={glass.purple}
-          />
-
-          <QuickActionPill
-            icon={<Ionicons name="image" size={22} color={glass.teal} />}
-            label="360°"
-            subLabel="Campus"
-            onPress={() => open360Spot('loc_360_it204')}
-            color={glass.teal}
-          />
-
-          <QuickActionPill
-            icon={<Ionicons name="restaurant" size={22} color={glass.gold} />}
-            label="Order"
-            subLabel="Canteen"
-            onPress={() => router.push('/(student)/canteen' as any)}
-            color={glass.gold}
-          />
-
-          <QuickActionPill
-            icon={<Ionicons name="calendar" size={22} color={glass.info} />}
-            label="My"
-            subLabel="Schedule"
-            onPress={() => router.push('/(student)/schedule' as any)}
-            color={glass.info}
-          />
-        </View>
-
-        {/* LIVE CLASS SECTION */}
-        <View style={styles.sectionHeaderRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            {isOngoing && <PulseDotHome color={branchColor} />}
-            <Text style={styles.sectionTitle}>
-              {liveClass ? (isOngoing ? 'Happening now' : 'Next up') : 'No classes'}
-            </Text>
-          </View>
-          <Pressable onPress={() => router.push('/(student)/schedule' as any)}>
-            <Text style={styles.sectionLink}>Full schedule</Text>
-          </Pressable>
-        </View>
-
-        {liveClass ? (
-          <GlassCard variant={isOngoing ? 'hero' : 'elevated'} style={styles.nextUpCard}>
-            <View style={styles.nextUpTopRow}>
-              <View style={[styles.timePill, isOngoing && { backgroundColor: `${branchColor}20`, borderColor: `${branchColor}40` }]}>
-                <Text style={[styles.timePillText, isOngoing && { color: branchColor }]}>
-                  {isOngoing ? '🔴 LIVE NOW' : '⏱ COMING UP'} · {liveClass.startTime}
-                </Text>
-              </View>
-              <Pressable onPress={() => router.push('/(student)/schedule' as any)}>
-                <Ionicons name="arrow-forward-circle" size={22} color={isOngoing ? branchColor : glass.textMuted} />
-              </Pressable>
-            </View>
-
-            <Text style={styles.classSubject}>{liveClass.subject}</Text>
-            {liveClass.subjectCode && (
-              <Text style={{ fontSize: 11, color: glass.textDim, fontWeight: '700', marginBottom: 8 }}>
-                {liveClass.subjectCode}
-              </Text>
-            )}
-
-            <View style={styles.classDetailsRow}>
-              <View style={styles.detailItem}>
-                <Ionicons name="location-outline" size={15} color={isOngoing ? branchColor : glass.purple} />
-                <Text style={styles.detailText}>{liveClass.room}</Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Ionicons name="person-outline" size={15} color={isOngoing ? branchColor : glass.purple} />
-                <Text style={styles.detailText}>{liveClass.teacher}</Text>
-              </View>
-            </View>
-
-            <View style={styles.classDetailsRow}>
-              <View style={styles.detailItem}>
-                <Ionicons name="time-outline" size={15} color={glass.textMuted} />
-                <Text style={[styles.detailText, { color: glass.textMuted }]}>
-                  {liveClass.startTime} – {liveClass.endTime}
-                </Text>
-              </View>
-              {liveClass.type === 'lab' && (
-                <GlassBadge variant="teal" size="sm">🧪 LAB</GlassBadge>
-              )}
-            </View>
-
-            <View style={styles.nextUpActionsRow}>
-              <GlassButton
-                variant="primary"
-                size="md"
-                leftIcon={<Ionicons name="navigate" size={16} color={glass.text} />}
-                onPress={() => open360Spot('loc_360_it204')}
-              >
-                Navigate to {liveClass.room}
-              </GlassButton>
-
-              <GlassButton
-                variant="secondary"
-                size="md"
-                leftIcon={<Ionicons name="scan-outline" size={16} color={glass.purple} />}
-                onPress={() => open360Spot('loc_360_it204')}
-              >
-                360°
-              </GlassButton>
-            </View>
-          </GlassCard>
-        ) : (
-          <GlassCard variant="default" style={[styles.nextUpCard, { alignItems: 'center', paddingVertical: 32 }]}>
-            <Text style={{ fontSize: 36, marginBottom: 10 }}>🎉</Text>
-            <Text style={[styles.classSubject, { textAlign: 'center' }]}>All done for today!</Text>
-            <Text style={{ fontSize: 13, color: glass.textMuted, marginTop: 4 }}>No more classes scheduled.</Text>
-            <GlassButton
-              variant="primary"
-              size="md"
-              leftIcon={<Ionicons name="calendar" size={16} color={glass.text} />}
-              onPress={() => router.push('/(student)/schedule' as any)}
-              style={{ marginTop: 16, alignSelf: 'center' }}
-            >
-              View Full Schedule
-            </GlassButton>
-          </GlassCard>
-        )}
-
-        {/* UPCOMING CLASSES (next 2 after current) */}
-        {liveSchedule && liveSchedule.upcoming.length > (isOngoing ? 0 : 1) && (
-          <>
-            <View style={[styles.sectionHeaderRow, { marginTop: 8 }]}>
-              <Text style={styles.sectionTitle}>Coming up today</Text>
-            </View>
-            {(isOngoing ? liveSchedule.upcoming : liveSchedule.upcoming.slice(1)).slice(0, 3).map((cls) => (
-              <GlassCard key={`${cls.time}-${cls.subject}`} variant="default" style={styles.upcomingCard}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.upcomingSubject}>{cls.subject}</Text>
-                    <View style={{ flexDirection: 'row', gap: 14 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                        <Ionicons name="location-outline" size={12} color={glass.purple} />
-                        <Text style={styles.upcomingMeta}>{cls.room}</Text>
-                      </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                        <Ionicons name="time-outline" size={12} color={glass.purple} />
-                        <Text style={styles.upcomingMeta}>{cls.startTime}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <Text style={styles.upcomingTeacher}>{cls.teacherShort}</Text>
-                </View>
-              </GlassCard>
-            ))}
-          </>
-        )}
-
         {/* ACTIVE ORDER TRACKER CARD (if exists) */}
         {activeOrder && (
-          <GlassCard variant="elevated" style={styles.orderTrackerCard}>
+          <GlassCard variant="elevated" style={[styles.orderTrackerCard, { marginTop: 0, marginBottom: 18 }]}>
             <View style={styles.orderHeaderRow}>
               <Text style={styles.orderNumberText}>{activeOrder.orderNumber}</Text>
               <GlassBadge
@@ -562,8 +429,157 @@ export default function StudentHomeScreen() {
                 </View>
               )}
             </View>
+
+            {/* Cancel option for mistakenly placed orders */}
+            {(activeOrder.orderStatus === 'placed' || activeOrder.orderStatus === 'accepted') && (
+              <View style={styles.cancelOrderContainer}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.cancelOrderBtn,
+                    pressed && { opacity: 0.75, transform: [{ scale: 0.98 }] },
+                  ]}
+                  onPress={() => handleCancelOrder(activeOrder.id)}
+                >
+                  <Ionicons name="close-circle-outline" size={15} color="#FF6B6B" />
+                  <Text style={styles.cancelOrderText}>Cancel order (ordered mistakenly?)</Text>
+                </Pressable>
+              </View>
+            )}
           </GlassCard>
         )}
+
+        {/* LIVE CLASS SECTION */}
+        <View style={styles.sectionHeaderRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {isOngoing && <PulseDotHome color={branchColor} />}
+            <Text style={styles.sectionTitle}>
+              {liveClass ? (isOngoing ? 'Happening now' : 'Next up') : 'No classes'}
+            </Text>
+          </View>
+          <Pressable onPress={() => router.push('/(student)/schedule' as any)}>
+            <Text style={styles.sectionLink}>Full schedule</Text>
+          </Pressable>
+        </View>
+
+        {liveClass ? (
+          <GlassCard variant={isOngoing ? 'hero' : 'elevated'} style={styles.nextUpCard}>
+            <View style={styles.nextUpTopRow}>
+              <View style={[styles.timePill, isOngoing && { backgroundColor: `${branchColor}20`, borderColor: `${branchColor}40` }]}>
+                <Text style={[styles.timePillText, isOngoing && { color: branchColor }]}>
+                  {isOngoing ? '🔴 LIVE NOW' : '⏱ COMING UP'} · {liveClass.startTime}
+                </Text>
+              </View>
+              <Pressable onPress={() => router.push('/(student)/schedule' as any)}>
+                <Ionicons name="arrow-forward-circle" size={22} color={isOngoing ? branchColor : glass.textMuted} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.classSubject}>{liveClass.subject}</Text>
+            {liveClass.subjectCode && (
+              <Text style={{ fontSize: 11, color: glass.textDim, fontWeight: '700', marginBottom: 8 }}>
+                {liveClass.subjectCode}
+              </Text>
+            )}
+
+            <View style={styles.classDetailsRow}>
+              {liveClass.room && liveClass.room !== '-' ? (
+                <View style={styles.detailItem}>
+                  <Ionicons name="location-outline" size={15} color={isOngoing ? branchColor : glass.purple} />
+                  <Text style={styles.detailText}>{liveClass.room}</Text>
+                </View>
+              ) : null}
+              {liveClass.teacher && liveClass.teacher !== '-' ? (
+                <View style={styles.detailItem}>
+                  <Ionicons name="person-outline" size={15} color={isOngoing ? branchColor : glass.purple} />
+                  <Text style={styles.detailText}>{liveClass.teacher}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.classDetailsRow}>
+              <View style={styles.detailItem}>
+                <Ionicons name="time-outline" size={15} color={glass.textMuted} />
+                <Text style={[styles.detailText, { color: glass.textMuted }]}>
+                  {liveClass.startTime} – {liveClass.endTime}
+                </Text>
+              </View>
+              {liveClass.type === 'lab' && (
+                <GlassBadge variant="teal" size="sm">🧪 LAB</GlassBadge>
+              )}
+            </View>
+
+            <View style={styles.nextUpActionsRow}>
+              {liveClass.room && liveClass.room !== '-' ? (
+                <GlassButton
+                  variant="primary"
+                  size="md"
+                  leftIcon={<Ionicons name="navigate" size={16} color={glass.text} />}
+                  onPress={() => open360Spot('loc_360_it204')}
+                >
+                  Navigate to {liveClass.room}
+                </GlassButton>
+              ) : null}
+
+              <GlassButton
+                variant={liveClass.room && liveClass.room !== '-' ? 'secondary' : 'primary'}
+                size="md"
+                leftIcon={<Ionicons name="scan-outline" size={16} color={liveClass.room && liveClass.room !== '-' ? glass.purple : glass.text} />}
+                onPress={() => open360Spot('loc_360_it204')}
+                style={!liveClass.room || liveClass.room === '-' ? { flex: 1 } : undefined}
+              >
+                360°
+              </GlassButton>
+            </View>
+          </GlassCard>
+        ) : (
+          <GlassCard variant="default" style={[styles.nextUpCard, { alignItems: 'center', paddingVertical: 32 }]}>
+            <Text style={{ fontSize: 36, marginBottom: 10 }}>🎉</Text>
+            <Text style={[styles.classSubject, { textAlign: 'center' }]}>All done for today!</Text>
+            <Text style={{ fontSize: 13, color: glass.textMuted, marginTop: 4 }}>No more classes scheduled.</Text>
+            <GlassButton
+              variant="primary"
+              size="md"
+              leftIcon={<Ionicons name="calendar" size={16} color={glass.text} />}
+              onPress={() => router.push('/(student)/schedule' as any)}
+              style={{ marginTop: 16, alignSelf: 'center' }}
+            >
+              View Full Schedule
+            </GlassButton>
+          </GlassCard>
+        )}
+
+        {/* UPCOMING CLASSES (next 2 after current) */}
+        {liveSchedule && liveSchedule.upcoming.length > (isOngoing ? 0 : 1) && (
+          <>
+            <View style={[styles.sectionHeaderRow, { marginTop: 8 }]}>
+              <Text style={styles.sectionTitle}>Coming up today</Text>
+            </View>
+            {(isOngoing ? liveSchedule.upcoming : liveSchedule.upcoming.slice(1)).slice(0, 3).map((cls) => (
+              <GlassCard key={`${cls.time}-${cls.subject}`} variant="default" style={styles.upcomingCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.upcomingSubject}>{cls.subject}</Text>
+                    <View style={{ flexDirection: 'row', gap: 14 }}>
+                      {cls.room && cls.room !== '-' ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                          <Ionicons name="location-outline" size={12} color={glass.purple} />
+                          <Text style={styles.upcomingMeta}>{cls.room}</Text>
+                        </View>
+                      ) : null}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        <Ionicons name="time-outline" size={12} color={glass.purple} />
+                        <Text style={styles.upcomingMeta}>{cls.startTime}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  {cls.teacherShort ? <Text style={styles.upcomingTeacher}>{cls.teacherShort}</Text> : null}
+                </View>
+              </GlassCard>
+            ))}
+          </>
+        )}
+
+
 
         {/* CAMPUS UPDATES */}
         <View style={styles.sectionHeaderRow}>
@@ -1032,5 +1048,28 @@ const styles = StyleSheet.create({
   panoramaContainer: {
     flex: 1,
     backgroundColor: Glass.bg,
+  },
+  cancelOrderContainer: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+  },
+  cancelOrderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.25)',
+  },
+  cancelOrderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FF8E8E',
   },
 });

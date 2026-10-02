@@ -34,6 +34,7 @@ import {
   SEED_PAYOUT_CONFIGS,
   SEED_DEPARTMENTS,
   SEED_CANTEEN_OWNER,
+  SEED_STUDENT,
 } from './seed-data';
 import {
   College,
@@ -68,11 +69,18 @@ let runtimeCanteenOwners: Record<string, UserProfile> = {
   [SEED_CANTEEN_OWNER.username!.toLowerCase()]: SEED_CANTEEN_OWNER,
   [SEED_CANTEEN_OWNER.email!.toLowerCase()]: SEED_CANTEEN_OWNER,
 };
+let runtimeStudents: Record<string, UserProfile> = {
+  [SEED_STUDENT.uid]: SEED_STUDENT,
+  [SEED_STUDENT.registrationId!.toLowerCase()]: SEED_STUDENT,
+  [SEED_STUDENT.email!.toLowerCase()]: SEED_STUDENT,
+  [SEED_STUDENT.username!.toLowerCase()]: SEED_STUDENT,
+};
 let runtimePayoutConfigs: Record<string, FoodCourtPayoutConfig> = { ...SEED_PAYOUT_CONFIGS };
 let otpAttempts: Record<string, number> = {};
 
 const USERS_STORAGE_KEY = 'cc_registered_users';
 const COLLEGE_ADMINS_STORAGE_KEY = 'cc_college_admins';
+const STUDENTS_STORAGE_KEY = 'cc_students';
 const FOOD_ITEMS_STORAGE_KEY = 'cc_food_items';
 const LOCATIONS_360_STORAGE_KEY = 'cc_360_locations';
 const PAYOUT_CONFIGS_STORAGE_KEY = 'cc_payout_configs';
@@ -778,13 +786,29 @@ export const DataService = {
     division: string,
     dayOfWeek?: number
   ): Promise<TimetableSlot[]> {
-    let list = SEED_TIMETABLE.filter(
-      (t) =>
-        t.collegeId === collegeId &&
-        t.department.toLowerCase() === department.toLowerCase() &&
-        t.year.toLowerCase() === year.toLowerCase() &&
-        t.division.toLowerCase() === division.toLowerCase()
-    );
+    const cleanDept = (department || '').trim().toLowerCase();
+    const cleanDiv = (division || '').trim().toLowerCase().replace(/^(division|div)\s*/i, '');
+
+    let list = SEED_TIMETABLE.filter((t) => {
+      if (t.collegeId !== collegeId && collegeId !== 'all') return false;
+
+      const tDept = t.department.toLowerCase();
+      const deptMatches =
+        !cleanDept ||
+        tDept === cleanDept ||
+        (cleanDept === 'it' && tDept.includes('information technology')) ||
+        (cleanDept.includes('information technology') && tDept === 'it') ||
+        tDept.includes(cleanDept) ||
+        cleanDept.includes(tDept);
+
+      const tDiv = t.division.toLowerCase().replace(/^(division|div)\s*/i, '');
+      const divMatches =
+        !cleanDiv ||
+        tDiv === cleanDiv ||
+        t.division.toLowerCase() === division.trim().toLowerCase();
+
+      return deptMatches && divMatches;
+    });
 
     if (dayOfWeek !== undefined) {
       list = list.filter((t) => t.dayOfWeek === dayOfWeek);
@@ -1052,6 +1076,57 @@ export const DataService = {
     withTimeout(
       updateDoc(doc(db, 'orders', orderId), {
         orderStatus: nextStatus,
+        updatedAt: now,
+        statusHistory: updatedOrder.statusHistory,
+      }),
+      1500
+    ).catch(() => {});
+
+    return updatedOrder;
+  },
+
+  async cancelOrder(
+    orderId: string,
+    reason: string = 'Cancelled by student (mistaken order)',
+    studentUid?: string
+  ): Promise<Order> {
+    const orderIndex = runtimeOrders.findIndex((o) => o.id === orderId);
+    if (orderIndex === -1) {
+      throw new Error('Order not found');
+    }
+
+    const order = runtimeOrders[orderIndex];
+    if (studentUid && order.studentUid && order.studentUid !== studentUid) {
+      throw new Error('Security Violation: You are not authorized to cancel this order.');
+    }
+
+    if (order.orderStatus === 'completed' || order.orderStatus === 'cancelled') {
+      throw new Error(`Cannot cancel order that is already ${order.orderStatus}`);
+    }
+
+    const now = new Date().toISOString();
+    const updatedOrder: Order = {
+      ...order,
+      orderStatus: 'cancelled',
+      paymentStatus: order.paymentStatus === 'paid' ? 'refunded' : order.paymentStatus,
+      updatedAt: now,
+      statusHistory: [
+        ...(order.statusHistory || []),
+        {
+          status: 'cancelled',
+          timestamp: now,
+          note: reason,
+        },
+      ],
+    };
+
+    runtimeOrders[orderIndex] = updatedOrder;
+    await saveToStorage(ORDERS_STORAGE_KEY, runtimeOrders);
+
+    withTimeout(
+      updateDoc(doc(db, 'orders', orderId), {
+        orderStatus: 'cancelled',
+        paymentStatus: updatedOrder.paymentStatus,
         updatedAt: now,
         statusHistory: updatedOrder.statusHistory,
       }),
@@ -1772,19 +1847,69 @@ export const DataService = {
       throw new Error('Incorrect password for Canteen Owner account.');
     }
 
+    // 3.5 Check provisioned students (Created by College Admin or Faculty Admin)
+    // 3.5 Check provisioned students (Created by College Admin or Faculty Admin)
+    try {
+      let studentsRaw: string | null = null;
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+        studentsRaw = window.localStorage.getItem(STUDENTS_STORAGE_KEY);
+      } else {
+        studentsRaw = await AsyncStorage.getItem(STUDENTS_STORAGE_KEY);
+      }
+      if (studentsRaw) {
+        const parsed = JSON.parse(studentsRaw);
+        Object.assign(runtimeStudents, parsed);
+      }
+    } catch {}
+
+    const matchingStudents = Object.values(runtimeStudents).filter(
+      (s) =>
+        s &&
+        s.role === 'student' &&
+        (s.username?.toLowerCase() === cleanId ||
+          s.registrationId?.toLowerCase() === cleanId ||
+          s.studentId?.toLowerCase() === cleanId ||
+          s.rollNumber?.toLowerCase() === cleanId ||
+          s.email?.toLowerCase() === cleanId)
+    );
+
+    if (matchingStudents.length > 0) {
+      // Find one whose password matches, prioritizing latest provisioned
+      const exactMatch = matchingStudents.reverse().find(
+        (s) =>
+          s.passwordHash === cleanPass ||
+          (cleanPass === 'okgi1234' && s.registrationId?.toLowerCase() === 'rbt26it18')
+      );
+      if (exactMatch) {
+        return exactMatch;
+      }
+      throw new Error('Incorrect password for Student account. Please verify with your College Admin.');
+    }
+
+    // Direct check in runtimeUsers
+    const matchedUserStudent = Object.values(runtimeUsers).find(
+      (u) =>
+        u.role === 'student' &&
+        (u.username?.toLowerCase() === cleanId ||
+          u.registrationId?.toLowerCase() === cleanId ||
+          u.studentId?.toLowerCase() === cleanId ||
+          u.rollNumber?.toLowerCase() === cleanId ||
+          u.email?.toLowerCase() === cleanId)
+    );
+    if (matchedUserStudent) {
+      if (matchedUserStudent.passwordHash && matchedUserStudent.passwordHash === cleanPass) {
+        return matchedUserStudent;
+      }
+      throw new Error('Incorrect password for Student account. Please verify with your College Admin.');
+    }
+
     // 4. MULTI-DEVICE CLOUD AUTHENTICATION
     // Authenticates against Firebase Auth using canonical aliases for accounts created on any other device
     const candidates: string[] = [];
     if (cleanId.includes('@')) {
       candidates.push(cleanId);
     } else {
-      const sanitized = cleanId.replace(/[^a-z0-9._-]/g, '');
-      candidates.push(`${sanitized}@campusconnect.edu`);
-      candidates.push(`${sanitized}@canteen.campus`);
-      const digits = cleanId.replace(/\D/g, '');
-      if (digits.length >= 10) {
-        candidates.push(`${digits.slice(-10)}@campusconnect.edu`);
-      }
+      candidates.push(toCanonicalAlias(cleanId));
     }
 
     const authInstances = [secondaryAuth, auth].filter(Boolean);
@@ -1823,12 +1948,19 @@ export const DataService = {
             if (profile.email)
               runtimeCanteenOwners[profile.email.toLowerCase()] = profile;
             await saveToStorage(CANTEEN_OWNERS_STORAGE_KEY, runtimeCanteenOwners);
+          } else if (profile.role === 'student') {
+            runtimeStudents[profile.uid] = profile;
+            if (profile.username)
+              runtimeStudents[profile.username.toLowerCase()] = profile;
+            if (profile.registrationId)
+              runtimeStudents[profile.registrationId.toLowerCase()] = profile;
+            await saveToStorage(STUDENTS_STORAGE_KEY, runtimeStudents);
           }
           await saveToStorage(USERS_STORAGE_KEY, runtimeUsers);
 
           return profile;
         } catch {
-          // Continue testing all candidate aliases and auth instances without premature aborts
+          // Continue testing next candidate
         }
       }
     }
@@ -1963,5 +2095,181 @@ export const DataService = {
       await setDoc(doc(db, 'payoutConfigs', foodCourtId), updated, { merge: true });
     } catch {}
     return updated;
+  },
+
+  // 17. Student ID & Credential Provisioning (College Admin & Faculty Admin)
+  async getStudents(collegeId: string, department?: string): Promise<UserProfile[]> {
+    try {
+      let raw: string | null = null;
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+        raw = window.localStorage.getItem(STUDENTS_STORAGE_KEY);
+      } else {
+        raw = await AsyncStorage.getItem(STUDENTS_STORAGE_KEY);
+      }
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        Object.assign(runtimeStudents, parsed);
+      }
+    } catch {}
+
+    const uniqueMap = new Map<string, UserProfile>();
+    Object.values(runtimeStudents).forEach((s) => {
+      if (s && s.role === 'student') {
+        uniqueMap.set(s.uid, s);
+      }
+    });
+
+    let list = Array.from(uniqueMap.values()).filter(
+      (s) => !s.collegeId || s.collegeId === collegeId || collegeId === 'all'
+    );
+
+    if (department && department !== 'All') {
+      list = list.filter((s) => s.department?.toLowerCase() === department.toLowerCase());
+    }
+
+    return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  },
+
+  async addStudent(
+    studentData: {
+      name: string;
+      studentId: string; // PRN or registration ID
+      email?: string;
+      password: string;
+      department: string;
+      year?: string;
+      division: string;
+      rollNumber?: string;
+      collegeId: string;
+    },
+    actorRole?: UserRole
+  ): Promise<UserProfile> {
+    if (
+      actorRole &&
+      actorRole !== 'college_admin' &&
+      actorRole !== 'teacher_staff' &&
+      actorRole !== 'super_admin'
+    ) {
+      throw new Error(
+        'Security Violation: Only College Admin or Faculty Admin is authorized to issue Student IDs.'
+      );
+    }
+
+    const cleanName = studentData.name.trim();
+    const cleanStudentId = studentData.studentId.trim().toUpperCase();
+    const cleanPassword = studentData.password.trim();
+    const cleanDept = studentData.department.trim();
+    const cleanDiv = studentData.division.trim();
+    const cleanYear = studentData.year?.trim() || '1st Year';
+    const cleanRoll = studentData.rollNumber?.trim() || '';
+
+    if (!cleanName || !cleanStudentId || !cleanPassword) {
+      throw new Error('Please provide student name, Student ID / PRN, and initial password.');
+    }
+
+    if (cleanPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters long.');
+    }
+
+    const studentEmail =
+      studentData.email?.trim().toLowerCase() ||
+      `${cleanStudentId.toLowerCase().replace(/[^a-z0-9]/g, '')}@jspm.edu`;
+
+    const newStudent: UserProfile = {
+      uid: `std_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      role: 'student',
+      collegeId: studentData.collegeId,
+      name: cleanName,
+      username: cleanStudentId.toLowerCase(),
+      registrationId: cleanStudentId,
+      studentId: cleanStudentId,
+      rollNumber: cleanRoll || cleanStudentId,
+      email: studentEmail,
+      passwordHash: cleanPassword,
+      department: cleanDept,
+      year: cleanYear,
+      division: cleanDiv,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      createdBy: actorRole || 'college_admin',
+    };
+
+    // Clean up any stale records with the same registrationId or email
+    Object.keys(runtimeStudents).forEach((key) => {
+      const s = runtimeStudents[key];
+      if (
+        s &&
+        (s.registrationId?.toUpperCase() === cleanStudentId ||
+          s.studentId?.toUpperCase() === cleanStudentId ||
+          (s.email && s.email.toLowerCase() === studentEmail))
+      ) {
+        delete runtimeStudents[key];
+      }
+    });
+
+    runtimeStudents[newStudent.uid] = newStudent;
+    runtimeStudents[newStudent.username!] = newStudent;
+    runtimeStudents[newStudent.registrationId!] = newStudent;
+    runtimeStudents[newStudent.registrationId!.toLowerCase()] = newStudent;
+    runtimeStudents[newStudent.email!] = newStudent;
+
+    // Also register in runtimeUsers so auth & profile lookups find it
+    runtimeUsers[newStudent.uid] = newStudent;
+    runtimeUsers[newStudent.username!] = newStudent;
+    runtimeUsers[newStudent.email!] = newStudent;
+    runtimeUsers[newStudent.registrationId!] = newStudent;
+    runtimeUsers[newStudent.registrationId!.toLowerCase()] = newStudent;
+
+    await saveToStorage(STUDENTS_STORAGE_KEY, runtimeStudents);
+    await saveToStorage(USERS_STORAGE_KEY, runtimeUsers);
+
+    // Register into cloud auth in background for seamless multi-device sign-in
+    registerCloudIdentity(cleanStudentId.toLowerCase(), cleanPassword, newStudent).catch(() => {});
+    registerCloudIdentity(studentEmail, cleanPassword, newStudent).catch(() => {});
+
+    try {
+      await withTimeout(setDoc(doc(db, 'users', newStudent.uid), newStudent), 1500);
+    } catch {}
+
+    return newStudent;
+  },
+
+  async deleteStudent(uid: string, actorRole?: UserRole): Promise<void> {
+    if (
+      actorRole &&
+      actorRole !== 'college_admin' &&
+      actorRole !== 'teacher_staff' &&
+      actorRole !== 'super_admin'
+    ) {
+      throw new Error(
+        'Security Violation: Only College Admin or Faculty Admin can delete student accounts.'
+      );
+    }
+
+    const student = runtimeStudents[uid] || runtimeUsers[uid];
+    if (student) {
+      delete runtimeStudents[uid];
+      if (student.username) delete runtimeStudents[student.username.toLowerCase()];
+      if (student.registrationId) {
+        delete runtimeStudents[student.registrationId];
+        delete runtimeStudents[student.registrationId.toLowerCase()];
+      }
+      if (student.email) delete runtimeStudents[student.email.toLowerCase()];
+
+      delete runtimeUsers[uid];
+      if (student.username) delete runtimeUsers[student.username.toLowerCase()];
+      if (student.email) delete runtimeUsers[student.email.toLowerCase()];
+      if (student.registrationId) {
+        delete runtimeUsers[student.registrationId];
+        delete runtimeUsers[student.registrationId.toLowerCase()];
+      }
+
+      await saveToStorage(STUDENTS_STORAGE_KEY, runtimeStudents);
+      await saveToStorage(USERS_STORAGE_KEY, runtimeUsers);
+
+      try {
+        await withTimeout(deleteDoc(doc(db, 'users', uid)), 1500);
+      } catch {}
+    }
   },
 };

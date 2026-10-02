@@ -42,6 +42,7 @@ export interface UserProfile {
   assignedFoodCourtId?: string;
   subjectsTaught?: string[];
   isClassTeacher?: boolean;
+  assignedDivision?: string;
   permissions?: StaffPermission[];
 }
 

@@ -13,6 +13,7 @@ import {
   Linking,
   Platform,
   Image,
+  Alert,
 } from 'react-native';
 
 import { Glass } from '@/constants/glass-theme';
@@ -66,7 +67,7 @@ export default function CanteenScreen() {
 
   const loadMenuAndHistory = async () => {
     const activeCollegeId = college?.id || 'col_jspm_tathawade';
-    const activeStudentUid = profile?.uid || 'demo_student_aarav';
+    const activeStudentUid = profile?.uid || '';
     try {
       const [items, ords, config] = await Promise.all([
         DataService.getFoodItems(activeCollegeId, activeCategory),
@@ -259,6 +260,37 @@ export default function CanteenScreen() {
     }
   };
 
+  const handleCancelOrder = (orderId: string) => {
+    const doCancel = async () => {
+      try {
+        await DataService.cancelOrder(orderId, 'Cancelled by student (mistaken order)', profile?.uid);
+        await loadMenuAndHistory();
+        if (Platform.OS === 'web') {
+          alert('Order was cancelled successfully.');
+        } else {
+          Alert.alert('Order Cancelled', 'Your order has been cancelled.');
+        }
+      } catch (err: any) {
+        alert(err.message || 'Could not cancel order');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to cancel this order? If you ordered mistakenly, this will immediately cancel it.')) {
+        doCancel();
+      }
+    } else {
+      Alert.alert(
+        'Cancel Order',
+        'Are you sure you want to cancel this order? If you ordered mistakenly, this will immediately cancel it.',
+        [
+          { text: 'Keep Order', style: 'cancel' },
+          { text: 'Yes, Cancel Order', style: 'destructive', onPress: doCancel },
+        ]
+      );
+    }
+  };
+
   const handleVerifyUpi = async () => {
     if (!upiOrderId || !upiRefInput.trim()) return;
     try {
@@ -395,16 +427,28 @@ export default function CanteenScreen() {
                   </Text>
                 </View>
 
-                {activeOrders[0].paymentStatus === 'cash_pending' && (
-                  <GlassButton
-                    variant="primary"
-                    size="sm"
-                    leftIcon={<Ionicons name="flash" size={13} color={glass.bg} />}
-                    onPress={() => handleOpenOnlinePaymentForOrder(activeOrders[0])}
-                  >
-                    Pay Online via UPI
-                  </GlassButton>
-                )}
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {activeOrders[0].paymentStatus === 'cash_pending' && (
+                    <GlassButton
+                      variant="primary"
+                      size="sm"
+                      leftIcon={<Ionicons name="flash" size={13} color={glass.bg} />}
+                      onPress={() => handleOpenOnlinePaymentForOrder(activeOrders[0])}
+                    >
+                      Pay Online via UPI
+                    </GlassButton>
+                  )}
+                  {(activeOrders[0].orderStatus === 'placed' || activeOrders[0].orderStatus === 'accepted') && (
+                    <GlassButton
+                      variant="danger"
+                      size="sm"
+                      leftIcon={<Ionicons name="close-circle-outline" size={14} color="#fff" />}
+                      onPress={() => handleCancelOrder(activeOrders[0].id)}
+                    >
+                      Cancel Order
+                    </GlassButton>
+                  )}
+                </View>
               </View>
             </View>
           </GlassCard>

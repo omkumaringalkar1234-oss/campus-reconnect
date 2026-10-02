@@ -34,7 +34,7 @@ export default function CollegeAdminScreen() {
   const { college, profile, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | '360' | 'canteen' | 'rooms' | 'faculty' | 'notices' | 'staff'
+    'overview' | '360' | 'canteen' | 'rooms' | 'students' | 'faculty' | 'notices' | 'staff'
   >('overview');
 
   // Core College State
@@ -45,6 +45,29 @@ export default function CollegeAdminScreen() {
   const [canteenOwners, setCanteenOwners] = useState<UserProfile[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [staffMembers, setStaffMembers] = useState<UserProfile[]>([]);
+  const [students, setStudents] = useState<UserProfile[]>([]);
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [showStudentPasswordMap, setShowStudentPasswordMap] = useState<Record<string, boolean>>({});
+
+  // Student Provisioning Modal State
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [studentName, setStudentName] = useState('');
+  const [studentId, setStudentId] = useState('');
+  const [studentDept, setStudentDept] = useState('Information Technology');
+  const [studentYear, setStudentYear] = useState('3rd Year');
+  const [studentDiv, setStudentDiv] = useState('Div A');
+  const [studentRoll, setStudentRoll] = useState('');
+  const [studentPass, setStudentPass] = useState('Student@2026');
+  const [studentEmail, setStudentEmail] = useState('');
+  const [showCreatedModal, setShowCreatedModal] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    name: string;
+    studentId: string;
+    email: string;
+    password: string;
+    department: string;
+    division: string;
+  } | null>(null);
 
   // Password Visibility Toggle for Canteen Owners
   const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
@@ -138,7 +161,7 @@ export default function CollegeAdminScreen() {
   };
 
   const verifyAdminRole = (): boolean => {
-    if (profile?.role !== 'college_admin') {
+    if (profile?.role !== 'college_admin' && profile?.role !== 'super_admin') {
       const msg = 'Security Notice: Only the designated College Admin has operational management authority.';
       if (Platform.OS === 'web') alert(msg);
       else Alert.alert('Access Denied', msg);
@@ -150,7 +173,7 @@ export default function CollegeAdminScreen() {
   const loadAdminData = async () => {
     if (!college) return;
     try {
-      const [r, f, locs, n, owners, depts, staff] = await Promise.all([
+      const [r, f, locs, n, owners, depts, staff, stds] = await Promise.all([
         DataService.getRooms(college.id),
         DataService.getFaculty(college.id),
         DataService.get360Locations(college.id),
@@ -158,6 +181,7 @@ export default function CollegeAdminScreen() {
         DataService.getCanteenOwners(college.id),
         DataService.getDepartments(college.id),
         DataService.getStaffMembers(college.id),
+        DataService.getStudents(college.id),
       ]);
       setRooms(r);
       setFaculty(f);
@@ -166,6 +190,7 @@ export default function CollegeAdminScreen() {
       setCanteenOwners(owners);
       setDepartments(depts);
       setStaffMembers(staff);
+      setStudents(stds);
 
       // Automatically ensure all canteen owners are synced to cloud for multi-device access
       DataService.syncAllCanteenOwnersToCloud(college.id).catch(() => {});
@@ -175,8 +200,12 @@ export default function CollegeAdminScreen() {
   };
 
   useEffect(() => {
+    if (profile && profile.role !== 'college_admin' && profile.role !== 'super_admin') {
+      router.replace('/(student)' as any);
+      return;
+    }
     loadAdminData();
-  }, [college]);
+  }, [college, profile]);
 
   // ==========================================
   // ROOMS & DEPARTMENTS CRUD
@@ -383,6 +412,77 @@ export default function CollegeAdminScreen() {
         alert(err.message || 'Error deleting canteen owner');
       }
     });
+  };
+
+  // ==========================================
+  // STUDENT ID & PASSWORD PROVISIONING CRUD
+  // ==========================================
+  const handleOpenAddStudent = () => {
+    if (!verifyAdminRole()) return;
+    setStudentName('');
+    const randomNum = Math.floor(10 + Math.random() * 90);
+    setStudentId(`RBT26IT${randomNum}`);
+    setStudentDept(departments.length > 0 ? departments[0].name : 'Information Technology');
+    setStudentYear('3rd Year');
+    setStudentDiv('Div A');
+    setStudentRoll(`${randomNum}`);
+    setStudentPass(`Jspm@${Math.floor(1000 + Math.random() * 9000)}`);
+    setStudentEmail('');
+    setShowStudentModal(true);
+  };
+
+  const handleSaveStudent = async () => {
+    if (!verifyAdminRole()) return;
+    if (!studentName.trim() || !studentId.trim() || !studentPass.trim() || !college) {
+      alert('Please provide Student Full Name, Student ID / PRN, and Password.');
+      return;
+    }
+
+    try {
+      const created = await DataService.addStudent(
+        {
+          name: studentName.trim(),
+          studentId: studentId.trim().toUpperCase(),
+          department: studentDept,
+          year: studentYear,
+          division: studentDiv,
+          rollNumber: studentRoll.trim() || undefined,
+          email: studentEmail.trim() || undefined,
+          password: studentPass.trim(),
+          collegeId: college.id,
+        },
+        'college_admin'
+      );
+
+      setShowStudentModal(false);
+      setCreatedCredentials({
+        name: created.name,
+        studentId: created.registrationId || created.studentId || studentId.trim().toUpperCase(),
+        email: created.email,
+        password: studentPass.trim(),
+        department: created.department || studentDept,
+        division: created.division || studentDiv,
+      });
+      setShowCreatedModal(true);
+      await loadAdminData();
+    } catch (err: any) {
+      alert(err.message || 'Error provisioning student account');
+    }
+  };
+
+  const handleDeleteStudent = (uid: string) => {
+    if (!verifyAdminRole()) return;
+    confirmAction(
+      'Are you sure you want to delete this Student account? Their credentials and access will be revoked.',
+      async () => {
+        try {
+          await DataService.deleteStudent(uid, 'college_admin');
+          await loadAdminData();
+        } catch (err: any) {
+          alert(err.message || 'Error deleting student');
+        }
+      }
+    );
   };
 
   // ==========================================
@@ -635,6 +735,7 @@ export default function CollegeAdminScreen() {
   const navTabs = [
     { key: 'overview', label: 'Overview', icon: 'grid' },
     { key: 'rooms', label: 'Rooms & Labs', icon: 'business' },
+    { key: 'students', label: 'Students', icon: 'school' },
     { key: 'canteen', label: 'Food Court Owners', icon: 'fast-food' },
     { key: 'faculty', label: 'Faculty', icon: 'people' },
     { key: 'notices', label: 'Notices', icon: 'notifications' },
@@ -766,6 +867,20 @@ export default function CollegeAdminScreen() {
                 <Text style={styles.metricLabel}>Food Court Owners</Text>
                 <Text style={styles.metricHint}>Tap to manage IDs</Text>
               </Pressable>
+
+              {/* Card 5: Registered Students */}
+              <Pressable
+                style={styles.metricCardInteractive}
+                onPress={() => setActiveTab('students')}
+              >
+                <View style={styles.metricHeaderRow}>
+                  <Ionicons name="school" size={24} color="#A78BFA" />
+                  <Ionicons name="chevron-forward" size={16} color={CampusTheme.colors.textMuted} />
+                </View>
+                <Text style={styles.metricNumber}>{students.length}</Text>
+                <Text style={styles.metricLabel}>Registered Students</Text>
+                <Text style={styles.metricHint}>Tap to issue & manage IDs</Text>
+              </Pressable>
             </View>
 
             {/* Quick Actions */}
@@ -777,6 +892,14 @@ export default function CollegeAdminScreen() {
               >
                 <Ionicons name="business" size={20} color={CampusTheme.colors.primary} />
                 <Text style={styles.actionCardText}>+ Add Room</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.actionCard}
+                onPress={handleOpenAddStudent}
+              >
+                <Ionicons name="school" size={20} color="#A78BFA" />
+                <Text style={styles.actionCardText}>+ Add Student</Text>
               </Pressable>
 
               <Pressable
@@ -1028,6 +1151,145 @@ export default function CollegeAdminScreen() {
                 <View style={styles.emptyBox}>
                   <Ionicons name="fast-food-outline" size={32} color={CampusTheme.colors.textMuted} />
                   <Text style={styles.emptyText}>No food court owners configured yet.</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* ========================================== */}
+        {/* STUDENTS TAB                               */}
+        {/* ========================================== */}
+        {activeTab === 'students' && (
+          <View style={styles.section}>
+            <View style={styles.rowBetween}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={styles.sectionTitle}>Student ID & Credentials</Text>
+                <Text style={styles.sectionSub}>
+                  Official student accounts provisioned by administration. Random self-registration is blocked for institutional security.
+                </Text>
+              </View>
+              <Pressable
+                style={[styles.addSpotBtn, { backgroundColor: '#9B5CFF' }]}
+                onPress={handleOpenAddStudent}
+              >
+                <Ionicons name="school" size={16} color="#FFFFFF" />
+                <Text style={[styles.addSpotBtnText, { color: '#FFFFFF' }]}>+ Issue Student ID</Text>
+              </Pressable>
+            </View>
+
+            {/* Search Bar */}
+            <View style={{ marginTop: 14, marginBottom: 12 }}>
+              <TextInput
+                style={[styles.textInput, { borderRadius: 12, backgroundColor: '#0D0018', borderWidth: 1, borderColor: 'rgba(196,170,255,0.2)' }]}
+                placeholder="Search students by name, PRN, or division..."
+                placeholderTextColor={CampusTheme.colors.textDim}
+                value={studentSearchQuery}
+                onChangeText={setStudentSearchQuery}
+              />
+            </View>
+
+            <View style={styles.listContainer}>
+              {students
+                .filter((s) => {
+                  if (!studentSearchQuery.trim()) return true;
+                  const q = studentSearchQuery.toLowerCase().trim();
+                  return (
+                    s.name.toLowerCase().includes(q) ||
+                    (s.registrationId && s.registrationId.toLowerCase().includes(q)) ||
+                    (s.studentId && s.studentId.toLowerCase().includes(q)) ||
+                    (s.division && s.division.toLowerCase().includes(q)) ||
+                    (s.department && s.department.toLowerCase().includes(q))
+                  );
+                })
+                .map((std) => {
+                  const showPass = !!showStudentPasswordMap[std.uid];
+                  const prn = std.registrationId || std.studentId || std.username || 'N/A';
+                  return (
+                    <View key={std.uid} style={styles.canteenOwnerCard}>
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                        <View style={[styles.itemIconBox, { backgroundColor: 'rgba(167,139,250,0.15)' }]}>
+                          <Ionicons name="school" size={22} color="#A78BFA" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <Text style={styles.itemName}>{std.name}</Text>
+                            <View style={[styles.activeStatusPill, { backgroundColor: 'rgba(167,139,250,0.2)' }]}>
+                              <Text style={[styles.activeStatusText, { color: '#C4AAFF' }]}>PRN: {prn}</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.itemMeta}>
+                            {std.department || 'Information Technology'} • {std.year || '3rd Year'} • {std.division || 'Div A'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Credentials Display */}
+                      <View style={styles.credBox}>
+                        <View style={styles.credRow}>
+                          <Text style={styles.credLabel}>Login Email / ID:</Text>
+                          <Text style={styles.credValue}>{std.email || `${prn}@jspm.edu`}</Text>
+                        </View>
+                        <View style={styles.credRow}>
+                          <Text style={styles.credLabel}>Assigned Password:</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={styles.credValue}>
+                              {showPass ? std.passwordHash || 'Student@2026' : '••••••••'}
+                            </Text>
+                            <Pressable
+                              onPress={() =>
+                                setShowStudentPasswordMap((prev) => ({
+                                  ...prev,
+                                  [std.uid]: !prev[std.uid],
+                                }))
+                              }
+                              hitSlop={8}
+                            >
+                              <Ionicons
+                                name={showPass ? 'eye-off' : 'eye'}
+                                size={16}
+                                color="#A78BFA"
+                              />
+                            </Pressable>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Action buttons */}
+                      <View style={styles.ownerActionRow}>
+                        <Pressable
+                          style={[styles.editActionBtn, { borderColor: 'rgba(167,139,250,0.3)' }]}
+                          onPress={() => {
+                            if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+                              navigator.clipboard.writeText(
+                                `Student ID: ${prn}\nEmail: ${std.email}\nPassword: ${std.passwordHash || 'Student@2026'}`
+                              );
+                              alert(`Credentials copied for ${std.name}!`);
+                            } else {
+                              alert(`ID: ${prn} | Pass: ${std.passwordHash || 'Student@2026'}`);
+                            }
+                          }}
+                        >
+                          <Ionicons name="copy-outline" size={14} color="#A78BFA" />
+                          <Text style={[styles.editActionBtnText, { color: '#C4AAFF' }]}>Copy Credentials</Text>
+                        </Pressable>
+
+                        <Pressable
+                          style={styles.deleteActionBtn}
+                          onPress={() => handleDeleteStudent(std.uid)}
+                        >
+                          <Ionicons name="trash-outline" size={14} color={CampusTheme.colors.danger} />
+                          <Text style={styles.deleteActionBtnText}>Delete ID</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  );
+                })}
+
+              {students.length === 0 && (
+                <View style={styles.emptyBox}>
+                  <Ionicons name="school-outline" size={32} color={CampusTheme.colors.textMuted} />
+                  <Text style={styles.emptyText}>No student accounts provisioned yet.</Text>
                 </View>
               )}
             </View>
@@ -2190,6 +2452,280 @@ export default function CollegeAdminScreen() {
                 <Ionicons name="checkmark-circle" size={18} color="#0D1411" />
                 <Text style={styles.saveSpotBtnText}>Create Staff Account</Text>
               </Pressable>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* ========================================== */}
+      {/* 9. ADD STUDENT ID & PASSWORD MODAL         */}
+      {/* ========================================== */}
+      {showStudentModal && (
+        <Modal
+          visible={showStudentModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowStudentModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { maxWidth: 520 }]}>
+              <View style={styles.modalTop}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={[styles.badge, { backgroundColor: '#9B5CFF' }]}>
+                    <Ionicons name="school" size={18} color="#fff" />
+                  </View>
+                  <View>
+                    <Text style={styles.modalHeading}>Issue Official Student ID</Text>
+                    <Text style={[styles.sectionSub, { marginTop: 0 }]}>
+                      Generate verified student credentials
+                    </Text>
+                  </View>
+                </View>
+                <Pressable onPress={() => setShowStudentModal(false)}>
+                  <Ionicons name="close" size={24} color={CampusTheme.colors.textMuted} />
+                </Pressable>
+              </View>
+
+              <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
+                <Text style={styles.inputLabel}>Student Full Name *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g. Rohan Sharma"
+                  placeholderTextColor={CampusTheme.colors.textDim}
+                  value={studentName}
+                  onChangeText={setStudentName}
+                />
+
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Student ID / PRN *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. RBT26IT45"
+                      placeholderTextColor={CampusTheme.colors.textDim}
+                      autoCapitalize="characters"
+                      value={studentId}
+                      onChangeText={setStudentId}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Roll / Batch No.</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. A1 / 45"
+                      placeholderTextColor={CampusTheme.colors.textDim}
+                      value={studentRoll}
+                      onChangeText={setStudentRoll}
+                    />
+                  </View>
+                </View>
+
+                <Text style={styles.inputLabel}>Department</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 6 }}>
+                  {(departments.length > 0
+                    ? departments
+                    : [
+                        { id: '1', name: 'Information Technology' },
+                        { id: '2', name: 'Computer Science' },
+                        { id: '3', name: 'Mechanical Engineering' },
+                        { id: '4', name: 'Electronics & Telecom' },
+                      ]
+                  ).map((d) => (
+                    <Pressable
+                      key={d.id}
+                      style={[
+                        styles.filterPill,
+                        studentDept === d.name && styles.filterPillActive,
+                      ]}
+                      onPress={() => setStudentDept(d.name)}
+                    >
+                      <Text
+                        style={[
+                          styles.filterPillText,
+                          studentDept === d.name && styles.filterPillTextActive,
+                        ]}
+                      >
+                        {d.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Academic Year</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 6 }}>
+                      {['1st Year', '2nd Year', '3rd Year', '4th Year'].map((y) => (
+                        <Pressable
+                          key={y}
+                          style={[
+                            styles.filterPill,
+                            studentYear === y && styles.filterPillActive,
+                          ]}
+                          onPress={() => setStudentYear(y)}
+                        >
+                          <Text
+                            style={[
+                              styles.filterPillText,
+                              studentYear === y && styles.filterPillTextActive,
+                            ]}
+                          >
+                            {y}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Division</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 6 }}>
+                      {['Div A', 'Div B', 'Div C', 'Div D'].map((div) => (
+                        <Pressable
+                          key={div}
+                          style={[
+                            styles.filterPill,
+                            studentDiv === div && styles.filterPillActive,
+                          ]}
+                          onPress={() => setStudentDiv(div)}
+                        >
+                          <Text
+                            style={[
+                              styles.filterPillText,
+                              studentDiv === div && styles.filterPillTextActive,
+                            ]}
+                          >
+                            {div}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+
+                <Text style={styles.inputLabel}>Official Student Email (Optional)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder={`${studentId ? studentId.toLowerCase() : 'prn'}@jspm.edu`}
+                  placeholderTextColor={CampusTheme.colors.textDim}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  value={studentEmail}
+                  onChangeText={setStudentEmail}
+                />
+
+                <Text style={styles.inputLabel}>Initial Password * (Min 6 characters)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter initial password"
+                  placeholderTextColor={CampusTheme.colors.textDim}
+                  value={studentPass}
+                  onChangeText={setStudentPass}
+                />
+              </ScrollView>
+
+              <Pressable
+                style={[styles.saveSpotBtn, { backgroundColor: '#9B5CFF', marginTop: 16 }]}
+                onPress={handleSaveStudent}
+              >
+                <Ionicons name="shield-checkmark" size={18} color="#FFFFFF" />
+                <Text style={[styles.saveSpotBtnText, { color: '#FFFFFF' }]}>
+                  Issue Student ID & Password
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* ========================================== */}
+      {/* 10. STUDENT CREDENTIALS CONFIRMATION MODAL */}
+      {/* ========================================== */}
+      {showCreatedModal && createdCredentials && (
+        <Modal
+          visible={showCreatedModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowCreatedModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { maxWidth: 460 }]}>
+              <View style={styles.modalTop}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Ionicons name="checkmark-circle" size={26} color="#34D399" />
+                  <Text style={styles.modalHeading}>Student Account Created!</Text>
+                </View>
+                <Pressable onPress={() => setShowCreatedModal(false)}>
+                  <Ionicons name="close" size={24} color={CampusTheme.colors.textMuted} />
+                </Pressable>
+              </View>
+
+              <Text style={[styles.sectionSub, { marginBottom: 16 }]}>
+                Share these official login credentials with the student. No unauthorized self-registration is allowed.
+              </Text>
+
+              <View
+                style={{
+                  backgroundColor: '#0D0018',
+                  borderRadius: 14,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: 'rgba(196,170,255,0.2)',
+                  gap: 10,
+                }}
+              >
+                <View style={styles.credRow}>
+                  <Text style={styles.credLabel}>Student Name:</Text>
+                  <Text style={[styles.credValue, { fontWeight: '800' }]}>{createdCredentials.name}</Text>
+                </View>
+                <View style={styles.credRow}>
+                  <Text style={styles.credLabel}>Student ID / PRN:</Text>
+                  <Text style={[styles.credValue, { color: '#C4AAFF', fontWeight: '800' }]}>
+                    {createdCredentials.studentId}
+                  </Text>
+                </View>
+                <View style={styles.credRow}>
+                  <Text style={styles.credLabel}>Login Email:</Text>
+                  <Text style={styles.credValue}>{createdCredentials.email}</Text>
+                </View>
+                <View style={styles.credRow}>
+                  <Text style={styles.credLabel}>Assigned Password:</Text>
+                  <Text style={[styles.credValue, { color: '#34D399', fontWeight: '800' }]}>
+                    {createdCredentials.password}
+                  </Text>
+                </View>
+                <View style={styles.credRow}>
+                  <Text style={styles.credLabel}>Department & Div:</Text>
+                  <Text style={styles.credValue}>
+                    {createdCredentials.department} • {createdCredentials.division}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+                <Pressable
+                  style={[styles.saveSpotBtn, { flex: 1, backgroundColor: '#9B5CFF' }]}
+                  onPress={() => {
+                    const text = `Campus Connect Credentials:\nName: ${createdCredentials.name}\nStudent ID: ${createdCredentials.studentId}\nEmail: ${createdCredentials.email}\nPassword: ${createdCredentials.password}\nDepartment: ${createdCredentials.department} (${createdCredentials.division})`;
+                    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+                      navigator.clipboard.writeText(text);
+                      alert('Credentials copied to clipboard!');
+                    } else {
+                      alert(text);
+                    }
+                  }}
+                >
+                  <Ionicons name="copy-outline" size={16} color="#FFFFFF" />
+                  <Text style={[styles.saveSpotBtnText, { color: '#FFFFFF' }]}>Copy Credentials</Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.saveSpotBtn, { flex: 1, backgroundColor: 'rgba(255,255,255,0.08)' }]}
+                  onPress={() => setShowCreatedModal(false)}
+                >
+                  <Text style={[styles.saveSpotBtnText, { color: '#FFFFFF' }]}>Done</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </Modal>

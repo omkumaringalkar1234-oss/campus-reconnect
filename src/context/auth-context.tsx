@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Please enter both identifier (email/registration ID) and password.');
       }
 
-      // 1. Institutional Fast-Path (Super Admin Omkumar Ingalkar, Canteen Owners, College Admins)
+      // 1. Institutional Fast-Path (Super Admin Omkumar Ingalkar, Canteen Owners, College Admins, Students)
       // Check first so platform administrator & verified seed accounts authenticate immediately
       const institutionalProfile = await DataService.authenticateCredentials(cleanId, cleanPass);
       if (institutionalProfile) {
@@ -138,7 +138,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const alias = institutionalProfile.email || toCanonicalAlias(institutionalProfile.username || cleanId);
           const cred = await signInWithEmailAndPassword(auth, alias, cleanPass);
           setUser(cred.user);
-        } catch {}
+        } catch {
+          setUser({
+            uid: institutionalProfile.uid,
+            email: institutionalProfile.email,
+            displayName: institutionalProfile.name,
+          } as any);
+        }
         await syncProfileAndCollege(institutionalProfile);
         setLoading(false);
         return;
@@ -163,39 +169,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 3. Authenticate non-email identifier (Registration ID, username, or phone) via candidate aliases
-      const candidateEmails: string[] = [];
-      candidateEmails.push(toCanonicalAlias(cleanId));
-      candidateEmails.push(`${cleanId.replace(/[^a-z0-9._-]/g, '')}@canteen.campus`);
-      const digits = cleanId.replace(/\D/g, '');
-      if (digits.length >= 10) {
-        candidateEmails.push(`${digits.slice(-10)}@campusconnect.edu`);
-      }
-
-      let lastError: any = null;
-      for (const candidate of candidateEmails) {
-        try {
-          const res = await signInWithEmailAndPassword(auth, candidate, cleanPass);
-          setUser(res.user);
-          let p = await DataService.getUserProfile(res.user.uid, res.user.email || candidate);
-          if (!p) {
-            p = parseProfileFromUser(res.user, candidate);
-            await DataService.saveUserProfile(p);
-          }
-          if (p) {
-            await syncProfileAndCollege(p);
-          }
-          return;
-        } catch (fbErr: any) {
-          lastError = fbErr;
-          // Continue loop to try next candidate alias without premature aborts
+      // 3. Authenticate non-email identifier (Registration ID, username, or phone) via canonical alias
+      const candidateAlias = toCanonicalAlias(cleanId);
+      try {
+        const res = await signInWithEmailAndPassword(auth, candidateAlias, cleanPass);
+        setUser(res.user);
+        let p = await DataService.getUserProfile(res.user.uid, res.user.email || candidateAlias);
+        if (!p) {
+          p = parseProfileFromUser(res.user, candidateAlias);
+          await DataService.saveUserProfile(p);
         }
+        if (p) {
+          await syncProfileAndCollege(p);
+        }
+        return;
+      } catch (fbErr: any) {
+        throw fbErr;
       }
-
-      if (lastError) {
-        throw lastError;
-      }
-      throw new Error('Authentication failed. Please verify your credentials or tap "Create an account" below.');
     } finally {
       setLoading(false);
     }

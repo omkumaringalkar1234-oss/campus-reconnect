@@ -24,7 +24,7 @@ export interface DaySchedule {
 
 export interface BatchSchedule {
   batchId: string;  // "B1", "B2", "B3"
-  batchLabel: string; // "Batch 1", "Batch 2", "Batch 3"
+  batchLabel: string; // e.g. "M1", "M2", "M3" (section letter + batch number)
   schedule: DaySchedule[];
 }
 
@@ -55,8 +55,8 @@ export interface StudentScheduleContext {
 
 const PRN_BRANCH_ALIAS_MAP: Record<string, string> = {
   ENTC: 'ENTC',
-  ELECT: 'ENTC',
-  'ELECTRICAL': 'ENTC',
+  ELECT: 'ELECTRICAL',
+  'ELECTRICAL': 'ELECTRICAL',
   CIVIL: 'CIVIL',
   MECHANICAL: 'ME',
   'A & R': 'AR',
@@ -68,6 +68,7 @@ const PRN_BRANCH_ALIAS_MAP: Record<string, string> = {
 
 const PRN_BRANCH_LABEL_MAP: Record<string, string> = {
   ENTC: 'Electronics & Telecom',
+  ELECTRICAL: 'Electrical Engineering',
   CIVIL: 'Civil Engineering',
   ME: 'Mechanical Engineering',
   AR: 'A & R',
@@ -140,8 +141,8 @@ export function resolveStudentScheduleContext(prn: string): StudentScheduleConte
   const branchLabel = PRN_BRANCH_LABEL_MAP[branchId] || match.branchId;
   const section = match.section;
   const subsection = match.subsection;
-  const subsectionNumber = subsection.replace(/\D/g, '');
-  const batchId = `B${subsectionNumber}`;
+  // batchId is the subsection itself (e.g., 'M1', 'N2', 'J3')
+  const batchId = subsection;
 
   const branchData = getBranchData(branchId);
   const safeDivisionId = branchData?.divisions.some((d) => d.divisionId === section)
@@ -150,7 +151,7 @@ export function resolveStudentScheduleContext(prn: string): StudentScheduleConte
   const targetDivision = branchData?.divisions.find((d) => d.divisionId === safeDivisionId) || branchData?.divisions[0];
   const safeBatchId = targetDivision?.batches.some((b) => b.batchId === batchId)
     ? batchId
-    : targetDivision?.batches[0]?.batchId || 'B1';
+    : targetDivision?.batches[0]?.batchId || subsection;
 
   return {
     prn: normalized,
@@ -177,7 +178,7 @@ export function resolveStudentSchedulePrefsFromPrn(prn: string) {
     batchId: resolved.batchId,
     branchLabel: resolved.branchLabel,
     divisionLabel: division?.divisionLabel || `Section ${resolved.section}`,
-    batchLabel: batch?.batchLabel || `Batch ${resolved.batchId.replace('B', '')}`,
+    batchLabel: batch?.batchLabel || resolved.subsection,
     savedAt: new Date().toISOString(),
   };
 }
@@ -3837,6 +3838,338 @@ const IT_N_N3: DaySchedule[] = [
     },
   ];
 
+// ─── Division Room & Faculty Mapping ───────────────────────────────────────────
+
+const DIVISION_ROOM_MAP: Record<string, string> = {
+  A: 'B-304',
+  B: 'B-309',
+  C: 'B-216',
+  D: 'B-203',
+  E: 'B-102',
+  F: 'B-114',
+  G: 'B-115',
+  H: 'B-204',
+  I: 'B-217',
+  J: 'B-303',
+  K: '', // slot-based
+  L: 'B-315',
+  M: 'B-314',
+  N: '', // slot-based
+};
+
+// Slot rooms for Division K (dayShort_time)
+const DIVISION_K_ROOMS: Record<string, string> = {
+  'Mon_08:30 – 09:30': 'B-115',
+  'Mon_09:30 – 10:30': 'B-115',
+  'Mon_13:30 – 14:30': 'B-115',
+  'Mon_14:30 – 15:30': 'B-115',
+  'Tue_10:45 – 11:45': 'B-216',
+  'Tue_11:45 – 12:45': 'B-216',
+  'Tue_13:30 – 14:30': 'B-304',
+  'Tue_14:30 – 15:30': 'B-304',
+  'Wed_08:30 – 09:30': 'B-115',
+  'Wed_09:30 – 10:30': 'B-115',
+  'Wed_13:30 – 14:30': 'B-216',
+  'Wed_14:30 – 15:30': 'B-216',
+  'Thu_10:45 – 11:45': 'B-102',
+  'Thu_11:45 – 12:45': 'B-102',
+  'Thu_13:30 – 14:30': 'B-216',
+  'Thu_14:30 – 15:30': 'B-216',
+  'Fri_10:45 – 11:45': 'B-217',
+  'Fri_11:45 – 12:45': 'B-217',
+  'Fri_13:30 – 14:30': 'B-217',
+  'Fri_14:30 – 15:30': 'B-217',
+};
+
+// Slot rooms for Division N (dayShort_time)
+const DIVISION_N_ROOMS: Record<string, string> = {
+  'Mon_08:30 – 09:30': 'B-203',
+  'Mon_09:30 – 10:30': 'B-203',
+  'Mon_10:45 – 11:45': 'B-203',
+  'Mon_11:45 – 12:45': 'B-203',
+  'Tue_13:30 – 14:30': 'B-115',
+  'Tue_14:30 – 15:30': 'B-115',
+  'Wed_10:45 – 11:45': 'B-115',
+  'Wed_11:45 – 12:45': 'B-115',
+  'Wed_13:30 – 14:30': 'B-102',
+  'Wed_14:30 – 15:30': 'B-102',
+  'Thu_08:30 – 09:30': 'B-203',
+  'Thu_09:30 – 10:30': 'B-203',
+  'Thu_13:30 – 14:30': 'B-204',
+  'Thu_14:30 – 15:30': 'B-204',
+  'Fri_10:45 – 11:45': 'B-102',
+  'Fri_11:45 – 12:45': 'B-102',
+  'Fri_13:30 – 14:30': 'B-102',
+  'Fri_14:30 – 15:30': 'B-102',
+};
+
+// Faculty mapping (1 or 2 faculty allowed; >2 or XYZ left blank)
+const DIVISION_FACULTY: Record<string, Record<string, string>> = {
+  A: {
+    CAL: 'Ms. SHUBHANGI WAGH',
+    CHEM: 'Ms. POORNIMA CHAVAN',
+    EM: 'Ms. RAMATAI PAWAR',
+    IEE: 'Ms. KAVITA BORHADE',
+    BIO: 'Ms. J. RADE',
+  },
+  B: {
+    CAL: 'Ms. PRIYANKA PANMAND',
+    CHEM: 'Ms. SEEMA PATIL',
+    EM: 'Ms. MAYURI AHIRAO',
+    IEE: 'Ms. AYESHA PACHGHARE',
+    BIO: 'Ms. VRUSHALI PATIL',
+  },
+  C: {
+    CAL: 'Ms. GEETAI SAINDANE',
+    CHEM: 'Ms. PREETI TOMAR',
+    EM: 'Ms. SANGITA MISHRA',
+    IEE: 'Mr. AMIT KUMAR',
+    BIO: 'Ms. VRUSHALI PATIL',
+  },
+  D: {
+    CAL: 'Ms. GEETAI SAINDANE',
+    CHEM: 'Ms. POORNIMA CHAVAN',
+    EM: 'Ms. RAMATAI PAWAR',
+    IEE: 'Ms. PAYAL BURANDE',
+    BIO: 'Ms. J. RADE',
+  },
+  E: {
+    CAL: 'Ms. AARTI GADE',
+    PHY: 'Ms. ANUPAMA KESKAR',
+    ICPDS: 'Dr. BHAGYASHRI DESHPANDE',
+    BEE: 'Ms. SADHANA GAWADE',
+    ENG: 'Dr. VENU SHREE',
+    IKS: 'Dr. SNEHAL NADGILKAR',
+  },
+  F: {
+    CAL: 'Ms. PRIYANKA PANMAND',
+    PHY: 'Mr. HEMANT DIXIT',
+    ICPDS: 'Ms. SWATI KHOT',
+    BEE: 'Ms. PRANOTI H.',
+    IKS: 'Dr. NEHA SATAM',
+  },
+  G: {
+    CAL: 'Dr. TARINI KOTAMKAR',
+    PHY: 'Dr. AMOL PATIL',
+    ICPDS: 'Ms. PRIYANKA SETHI',
+    BEE: 'Ms. SONAL KATARIYA',
+    IKS: 'Dr. SNEHAL NADGILKAR',
+  },
+  H: {
+    CAL: 'Dr. TARINI KOTAMKAR',
+    CHEM: 'Ms. ASMITA DENGLE',
+    ICPDS: 'Mr. SACHIN GODBOLE',
+    BEE: 'Ms. BHARATI THAWALI',
+    IKS: 'Dr. NEHA SATAM',
+  },
+  I: {
+    DM: 'Ms. GEETAI SAINDANE',
+    ISPC: 'Ms. SNEHA SABLE',
+    FCS: 'Ms. SHRUTIKA',
+    PEE: 'Ms. ASHWINI BAVISKAR',
+    FOP: 'Mr. DEEPAK DIXIT',
+    'BCVS I': 'Dr. NIVA SHARMA',
+    IKS: 'Dr. NEHA SATAM',
+    PYTH: 'Ms. RANI',
+  },
+  J: {
+    CAL: 'Ms. SNEHA SABLE',
+    DM: 'Ms. GAURI SONAR',
+    PHY: 'Mr. SACHIN LABADE',
+    ICPDS: 'Dr. BHAGYASHRI DESHPANDE',
+    BEE: 'Ms. SADHANA GAWADE',
+    'PROF ENG': 'Ms. DEEPA JEOSEPH',
+  },
+  K: {
+    CAL: 'Ms. AARTI GADE',
+    DM: 'Ms. SHUBHANGI WAGH',
+    PHY: 'Ms. ANUPAMA KESKAR',
+    ICPDS: 'Mr. SACHIN GODBOLE',
+    BEE: 'Ms. SONAL KATARIYA',
+    GER: 'Ms. PRAJKATA DESHMUKH',
+  },
+  L: {
+    CAL: 'Ms. SHUBHANGI WAGH',
+    DM: 'Ms. AARTI GADE',
+    PHY: 'Dr. AMOL PATIL',
+    ICPDS: 'Ms. OZMA KHAN',
+    BEE: 'Ms. PRANOTI H.',
+    JAP: 'Ms. RUPALI GIRASE',
+  },
+  M: {
+    CAL: 'Dr. TARINI KOTAMKAR',
+    CHEM: 'Ms. SEEMA PATIL',
+    IEE: 'Ms. PAYAL BURANDE',
+    ICPDS: 'Ms. OZMA KHAN',
+    BIO: 'Ms. J. RADE',
+    IKS: 'Dr. SNEHAL NADGILKAR',
+  },
+  N: {
+    CHEM: 'Ms. ASMITA DENGLE',
+    IEE: 'Ms. KAVITA BORHADE',
+    ICPDS: 'Dr. SAYALI GUND',
+    BIO: 'Ms. VRUSHALI PATIL',
+    IKS: 'Dr. SNEHAL NADGILKAR',
+  },
+};
+
+// Special Schedule for Saturday (Date: 26/09/2026)
+const SATURDAY_SPECIAL_SCHEDULE: Record<
+  string,
+  { room: string; slots: [string, string, string, string] }
+> = {
+  A: { room: 'A-304', slots: ['BIO', 'CAL', 'CHEM', 'IEE'] },
+  B: { room: 'B-309', slots: ['IEE', 'CAL', 'CHEM', 'BIO'] },
+  C: { room: 'B-216', slots: ['BIO', 'CHEM', 'EM', 'CAL'] },
+  D: { room: 'B-203', slots: ['CHEM', 'CAL', 'EM', 'IEE'] },
+  E: { room: 'B-102', slots: ['CAL', 'ICPDS', 'PHY', 'BEE'] },
+  F: { room: 'B-114', slots: ['ICPDS', 'BEE', 'CAL', 'PHY'] },
+  G: { room: 'B-115', slots: ['ICPDS', 'PHY', 'BEE', 'ICPDS'] },
+  H: { room: 'B-315', slots: ['CHEM', 'ICPDS', 'CAL', 'BEE'] },
+  I: { room: 'B-217', slots: ['DM', 'FCS', 'ISPC', 'ISPC'] },
+  J: { room: 'B-204', slots: ['DM', 'PHY', 'CAL', 'ICPDS'] },
+  K: { room: 'B-207', slots: ['DM', 'PHY', 'CAL', 'ICPDS'] },
+  L: { room: 'B-307', slots: ['ICPDS', 'DM', 'PHY', 'CAL'] },
+  M: { room: 'B-314', slots: ['IEE', 'ICPDS', 'BIO', 'CAL'] },
+  N: { room: 'B-303', slots: ['CAL', 'CHEM', 'ICPDS', 'IEE'] },
+};
+
+function buildSaturdayDaySchedule(divisionId: string): DaySchedule {
+  const sat = SATURDAY_SPECIAL_SCHEDULE[divisionId];
+  const facultyMap = DIVISION_FACULTY[divisionId] || {};
+  const room = sat?.room || '';
+
+  const createSatSlot = (time: string, subject: string): TimetableEntry => {
+    const teacher = facultyMap[subject] || '';
+    const teacherShort = teacher
+      ? teacher.replace(/^(Dr\.|Mr\.|Ms\.|Prof\.)\s*/i, '').trim()
+      : '';
+    return makeSlot(time, subject, room, teacher, teacherShort || teacher, 'lecture');
+  };
+
+  const shortRecess = makeSlot('10:30 – 10:45', 'Short Recess', '-', '', '', 'break');
+
+  if (!sat) {
+    return {
+      day: 'Saturday',
+      dayShort: 'Sat',
+      dayNum: 6,
+      slots: [],
+    };
+  }
+
+  return {
+    day: 'Saturday',
+    dayShort: 'Sat',
+    dayNum: 6,
+    slots: [
+      createSatSlot('08:30 – 09:30', sat.slots[0]),
+      createSatSlot('09:30 – 10:30', sat.slots[1]),
+      shortRecess,
+      createSatSlot('10:45 – 11:45', sat.slots[2]),
+      createSatSlot('11:45 – 12:45', sat.slots[3]),
+    ],
+  };
+}
+
+function enrichDivisionSchedule(divisionId: string, schedule: DaySchedule[]): DaySchedule[] {
+  const defaultRoom = DIVISION_ROOM_MAP[divisionId] || '';
+  const facultyMap = DIVISION_FACULTY[divisionId] || {};
+
+  return schedule.map((day) => {
+    if (day.dayShort === 'Sat') {
+      return buildSaturdayDaySchedule(divisionId);
+    }
+
+    return {
+      ...day,
+      slots: day.slots.map((slot): TimetableEntry => {
+        // 1. Recess & Break handling
+        if (slot.type === 'break' || slot.subject.includes('Recess') || slot.subject === 'Break') {
+          return {
+            ...slot,
+            type: 'break',
+            room: '-',
+            teacher: '',
+            teacherShort: '',
+            subjectCode: undefined,
+          };
+        }
+
+        // 2. Clean short course title (no batch prefixes, no room parentheses)
+        const cleanSubject = slot.subject
+          .replace(/\(B-\d+\)/g, '')
+          .replace(/^[A-Z]\d-/i, '')
+          .trim();
+
+        // 3. Calculate duration: any 2-hour class is a lab
+        let durationMinutes = 60;
+        try {
+          const [startRaw, endRaw] = slot.time.split('–').map((s) => s.trim());
+          const [sh, sm] = startRaw.split(':').map(Number);
+          const [eh, em] = endRaw.split(':').map(Number);
+          durationMinutes = (eh * 60 + em) - (sh * 60 + sm);
+        } catch {
+          durationMinutes = 60;
+        }
+
+        const isTwoHourClass = durationMinutes >= 110;
+        const isLab =
+          isTwoHourClass ||
+          slot.type === 'lab' ||
+          cleanSubject === 'ED' ||
+          cleanSubject === 'W/S' ||
+          cleanSubject === 'IEEP' ||
+          cleanSubject === 'CEP' ||
+          cleanSubject === 'PYTH';
+
+        const slotType: TimetableEntry['type'] = isLab ? 'lab' : 'lecture';
+
+        // 4. Determine room location
+        let room = '';
+        const daySlotKey = `${day.dayShort}_${slot.time}`;
+
+        if (divisionId === 'K') {
+          room = DIVISION_K_ROOMS[daySlotKey] || '';
+        } else if (divisionId === 'N') {
+          room = DIVISION_N_ROOMS[daySlotKey] || '';
+        } else {
+          room = isLab ? '' : defaultRoom;
+        }
+
+        // 5. Determine faculty (1 or 2 faculty allowed; >2 or unassigned = blank)
+        let teacher = '';
+        if (facultyMap[cleanSubject]) {
+          teacher = facultyMap[cleanSubject];
+        } else if (cleanSubject.includes('/')) {
+          const parts = cleanSubject.split('/').map((s) => s.trim());
+          const faculties = parts.map((s) => facultyMap[s]).filter(Boolean);
+          if (faculties.length > 0 && faculties.length <= 2) {
+            teacher = faculties.join(', ');
+          }
+        }
+
+        const teacherShort = teacher
+          ? teacher
+              .split(', ')
+              .map((f) => f.replace(/^(Dr\.|Mr\.|Ms\.|Prof\.)\s*/i, '').trim())
+              .join(', ')
+          : '';
+
+        return {
+          ...slot,
+          type: slotType,
+          subject: cleanSubject,
+          subjectCode: undefined,
+          room,
+          teacher,
+          teacherShort: teacherShort || teacher,
+        };
+      }),
+    };
+  });
+}
+
 export const TIMETABLE_BRANCHES: BranchData[] = [
   {
     branchId: 'CE',
@@ -3846,43 +4179,27 @@ export const TIMETABLE_BRANCHES: BranchData[] = [
     color: '#7C3AED',
     divisions: [
       {
-        divisionId: 'A', divisionLabel: 'Division A',
-        batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: CE_A_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: CE_A_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: CE_A_B3 },
-        ],
-      },
-      {
-        divisionId: 'B', divisionLabel: 'Division B',
-        batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: CE_B_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: CE_B_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: CE_B_B3 },
-        ],
-      },
-      {
         divisionId: 'J', divisionLabel: 'Section J',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: CE_J_J1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: CE_J_J2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: CE_J_J3 },
+          { batchId: 'J1', batchLabel: 'J1', schedule: enrichDivisionSchedule('J', CE_J_J1) },
+          { batchId: 'J2', batchLabel: 'J2', schedule: enrichDivisionSchedule('J', CE_J_J2) },
+          { batchId: 'J3', batchLabel: 'J3', schedule: enrichDivisionSchedule('J', CE_J_J3) },
         ],
       },
       {
         divisionId: 'K', divisionLabel: 'Section K',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: CE_K_K1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: CE_K_K2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: CE_K_K3 },
+          { batchId: 'K1', batchLabel: 'K1', schedule: enrichDivisionSchedule('K', CE_K_K1) },
+          { batchId: 'K2', batchLabel: 'K2', schedule: enrichDivisionSchedule('K', CE_K_K2) },
+          { batchId: 'K3', batchLabel: 'K3', schedule: enrichDivisionSchedule('K', CE_K_K3) },
         ],
       },
       {
         divisionId: 'L', divisionLabel: 'Section L',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: CE_L_L1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: CE_L_L2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: CE_L_L3 },
+          { batchId: 'L1', batchLabel: 'L1', schedule: enrichDivisionSchedule('L', CE_L_L1) },
+          { batchId: 'L2', batchLabel: 'L2', schedule: enrichDivisionSchedule('L', CE_L_L2) },
+          { batchId: 'L3', batchLabel: 'L3', schedule: enrichDivisionSchedule('L', CE_L_L3) },
         ],
       },
     ],
@@ -3895,35 +4212,19 @@ export const TIMETABLE_BRANCHES: BranchData[] = [
     color: '#0EA5E9',
     divisions: [
       {
-        divisionId: 'A', divisionLabel: 'Division A',
-        batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: IT_A_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: IT_A_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: IT_A_B3 },
-        ],
-      },
-      {
-        divisionId: 'B', divisionLabel: 'Division B',
-        batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: IT_B_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: IT_B_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: IT_B_B3 },
-        ],
-      },
-      {
         divisionId: 'M', divisionLabel: 'Section M',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: IT_M_M1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: IT_M_M2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: IT_M_M3 },
+          { batchId: 'M1', batchLabel: 'M1', schedule: enrichDivisionSchedule('M', IT_M_M1) },
+          { batchId: 'M2', batchLabel: 'M2', schedule: enrichDivisionSchedule('M', IT_M_M2) },
+          { batchId: 'M3', batchLabel: 'M3', schedule: enrichDivisionSchedule('M', IT_M_M3) },
         ],
       },
       {
         divisionId: 'N', divisionLabel: 'Section N',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: IT_N_N1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: IT_N_N2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: IT_N_N3 },
+          { batchId: 'N1', batchLabel: 'N1', schedule: enrichDivisionSchedule('N', IT_N_N1) },
+          { batchId: 'N2', batchLabel: 'N2', schedule: enrichDivisionSchedule('N', IT_N_N2) },
+          { batchId: 'N3', batchLabel: 'N3', schedule: enrichDivisionSchedule('N', IT_N_N3) },
         ],
       },
     ],
@@ -3936,27 +4237,36 @@ export const TIMETABLE_BRANCHES: BranchData[] = [
     color: '#F59E0B',
     divisions: [
       {
-        divisionId: 'A', divisionLabel: 'Division A',
+        divisionId: 'A', divisionLabel: 'Section A',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: ENTC_A_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: ENTC_A_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: ENTC_A_B3 },
+          { batchId: 'A1', batchLabel: 'A1', schedule: enrichDivisionSchedule('A', ENTC_A_B1) },
+          { batchId: 'A2', batchLabel: 'A2', schedule: enrichDivisionSchedule('A', ENTC_A_B2) },
+          { batchId: 'A3', batchLabel: 'A3', schedule: enrichDivisionSchedule('A', ENTC_A_B3) },
         ],
       },
       {
-        divisionId: 'B', divisionLabel: 'Division B',
+        divisionId: 'B', divisionLabel: 'Section B',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: ENTC_B_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: ENTC_B_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: ENTC_B_B3 },
+          { batchId: 'B1', batchLabel: 'B1', schedule: enrichDivisionSchedule('B', ENTC_B_B1) },
+          { batchId: 'B2', batchLabel: 'B2', schedule: enrichDivisionSchedule('B', ENTC_B_B2) },
+          { batchId: 'B3', batchLabel: 'B3', schedule: enrichDivisionSchedule('B', ENTC_B_B3) },
         ],
       },
+    ],
+  },
+  {
+    branchId: 'ELECTRICAL',
+    branchLabel: 'Electrical Engineering',
+    branchCode: 'ELECTRICAL',
+    emoji: '⚡',
+    color: '#EAB308',
+    divisions: [
       {
-        divisionId: 'C', divisionLabel: 'Division C',
+        divisionId: 'C', divisionLabel: 'Section C',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: ENTC_C_C1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: ENTC_C_C2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: ENTC_C_C3 },
+          { batchId: 'C1', batchLabel: 'C1', schedule: enrichDivisionSchedule('C', ENTC_C_C1) },
+          { batchId: 'C2', batchLabel: 'C2', schedule: enrichDivisionSchedule('C', ENTC_C_C2) },
+          { batchId: 'C3', batchLabel: 'C3', schedule: enrichDivisionSchedule('C', ENTC_C_C3) },
         ],
       },
     ],
@@ -3969,43 +4279,27 @@ export const TIMETABLE_BRANCHES: BranchData[] = [
     color: '#10B981',
     divisions: [
       {
-        divisionId: 'A', divisionLabel: 'Division A',
-        batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: ME_A_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: ME_A_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: ME_A_B3 },
-        ],
-      },
-      {
-        divisionId: 'B', divisionLabel: 'Division B',
-        batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: ME_B_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: ME_B_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: ME_B_B3 },
-        ],
-      },
-      {
         divisionId: 'E', divisionLabel: 'Section E',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: ME_E_E1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: ME_E_E2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: ME_E_E3 },
+          { batchId: 'E1', batchLabel: 'E1', schedule: enrichDivisionSchedule('E', ME_E_E1) },
+          { batchId: 'E2', batchLabel: 'E2', schedule: enrichDivisionSchedule('E', ME_E_E2) },
+          { batchId: 'E3', batchLabel: 'E3', schedule: enrichDivisionSchedule('E', ME_E_E3) },
         ],
       },
       {
         divisionId: 'F', divisionLabel: 'Section F',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: ME_F_F1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: ME_F_F2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: ME_F_F3 },
+          { batchId: 'F1', batchLabel: 'F1', schedule: enrichDivisionSchedule('F', ME_F_F1) },
+          { batchId: 'F2', batchLabel: 'F2', schedule: enrichDivisionSchedule('F', ME_F_F2) },
+          { batchId: 'F3', batchLabel: 'F3', schedule: enrichDivisionSchedule('F', ME_F_F3) },
         ],
       },
       {
         divisionId: 'G', divisionLabel: 'Section G',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: ME_G_G1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: ME_G_G2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: ME_G_G3 },
+          { batchId: 'G1', batchLabel: 'G1', schedule: enrichDivisionSchedule('G', ME_G_G1) },
+          { batchId: 'G2', batchLabel: 'G2', schedule: enrichDivisionSchedule('G', ME_G_G2) },
+          { batchId: 'G3', batchLabel: 'G3', schedule: enrichDivisionSchedule('G', ME_G_G3) },
         ],
       },
     ],
@@ -4018,27 +4312,11 @@ export const TIMETABLE_BRANCHES: BranchData[] = [
     color: '#EF4444',
     divisions: [
       {
-        divisionId: 'A', divisionLabel: 'Division A',
-        batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: CIVIL_A_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: CIVIL_A_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: CIVIL_A_B3 },
-        ],
-      },
-      {
-        divisionId: 'B', divisionLabel: 'Division B',
-        batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: CIVIL_B_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: CIVIL_B_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: CIVIL_B_B3 },
-        ],
-      },
-      {
         divisionId: 'D', divisionLabel: 'Section D',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: CIVIL_D_D1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: CIVIL_D_D2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: CIVIL_D_D3 },
+          { batchId: 'D1', batchLabel: 'D1', schedule: enrichDivisionSchedule('D', CIVIL_D_D1) },
+          { batchId: 'D2', batchLabel: 'D2', schedule: enrichDivisionSchedule('D', CIVIL_D_D2) },
+          { batchId: 'D3', batchLabel: 'D3', schedule: enrichDivisionSchedule('D', CIVIL_D_D3) },
         ],
       },
     ],
@@ -4053,9 +4331,9 @@ export const TIMETABLE_BRANCHES: BranchData[] = [
       {
         divisionId: 'H', divisionLabel: 'Section H',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: AR_H_H1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: AR_H_H2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: AR_H_H3 },
+          { batchId: 'H1', batchLabel: 'H1', schedule: enrichDivisionSchedule('H', AR_H_H1) },
+          { batchId: 'H2', batchLabel: 'H2', schedule: enrichDivisionSchedule('H', AR_H_H2) },
+          { batchId: 'H3', batchLabel: 'H3', schedule: enrichDivisionSchedule('H', AR_H_H3) },
         ],
       },
     ],
@@ -4070,34 +4348,9 @@ export const TIMETABLE_BRANCHES: BranchData[] = [
       {
         divisionId: 'I', divisionLabel: 'Section I',
         batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: CSBS_I_I1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: CSBS_I_I2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: CSBS_I_I3 },
-        ],
-      },
-    ],
-  },
-  {
-    branchId: 'AIDS',
-    branchLabel: 'AI & Data Science',
-    branchCode: 'AIDS',
-    emoji: '🤖',
-    color: '#EC4899',
-    divisions: [
-      {
-        divisionId: 'A', divisionLabel: 'Division A',
-        batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: AIDS_A_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: AIDS_A_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: AIDS_A_B3 },
-        ],
-      },
-      {
-        divisionId: 'B', divisionLabel: 'Division B',
-        batches: [
-          { batchId: 'B1', batchLabel: 'Batch 1', schedule: AIDS_B_B1 },
-          { batchId: 'B2', batchLabel: 'Batch 2', schedule: AIDS_B_B2 },
-          { batchId: 'B3', batchLabel: 'Batch 3', schedule: AIDS_B_B3 },
+          { batchId: 'I1', batchLabel: 'I1', schedule: enrichDivisionSchedule('I', CSBS_I_I1) },
+          { batchId: 'I2', batchLabel: 'I2', schedule: enrichDivisionSchedule('I', CSBS_I_I2) },
+          { batchId: 'I3', batchLabel: 'I3', schedule: enrichDivisionSchedule('I', CSBS_I_I3) },
         ],
       },
     ],
@@ -4165,7 +4418,7 @@ export function getTodayLiveSchedule(
 ) {
   const now = new Date();
   const dayNum = now.getDay(); // 0=Sun, 1=Mon .. 6=Sat
-  const effectiveDay = dayNum === 0 || dayNum === 6 ? 1 : dayNum;
+  const effectiveDay = dayNum === 0 ? 1 : dayNum;
 
   const dayData = getDaySchedule(branchId, divisionId, batchId, effectiveDay);
   if (!dayData) return { ongoing: null, upcoming: [], ended: [] };

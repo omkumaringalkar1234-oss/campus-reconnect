@@ -100,6 +100,9 @@ function GlassInput({
   onChangeText,
   secureTextEntry,
   keyboardType,
+  showPasswordToggle,
+  isPasswordVisible,
+  onTogglePassword,
 }: {
   icon: any;
   placeholder: string;
@@ -107,6 +110,9 @@ function GlassInput({
   onChangeText: (v: string) => void;
   secureTextEntry?: boolean;
   keyboardType?: any;
+  showPasswordToggle?: boolean;
+  isPasswordVisible?: boolean;
+  onTogglePassword?: () => void;
 }) {
   const [focused, setFocused] = useState(false);
   const focusAnim = useRef(new Animated.Value(0)).current;
@@ -132,7 +138,7 @@ function GlassInput({
         style={{ marginRight: 10 }}
       />
       <TextInput
-        style={styles.glassInput}
+        style={[styles.glassInput, showPasswordToggle && { flex: 1, paddingRight: 4 }]}
         placeholder={placeholder}
         placeholderTextColor="rgba(255,255,255,0.28)"
         value={value}
@@ -144,6 +150,19 @@ function GlassInput({
         autoCapitalize="none"
         autoCorrect={false}
       />
+      {showPasswordToggle && (
+        <Pressable
+          onPress={onTogglePassword}
+          hitSlop={10}
+          style={styles.eyeToggleBtn}
+        >
+          <Ionicons
+            name={isPasswordVisible ? 'eye-off' : 'eye'}
+            size={18}
+            color={isPasswordVisible ? '#C4AAFF' : 'rgba(255,255,255,0.45)'}
+          />
+        </Pressable>
+      )}
     </Animated.View>
   );
 }
@@ -155,6 +174,7 @@ export default function LoginScreen() {
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -170,8 +190,20 @@ export default function LoginScreen() {
   }, []);
 
   const getFriendlyError = (err: any): string => {
-    const code = err?.code || '';
     const rawMsg = err?.message || (typeof err === 'string' ? err : '');
+    if (rawMsg.includes('Incorrect password for Student account')) {
+      return '❌ ' + rawMsg;
+    }
+    if (rawMsg.includes('Incorrect password for Super Admin account')) {
+      return '❌ ' + rawMsg;
+    }
+    if (rawMsg.includes('Incorrect password for College Admin account')) {
+      return '❌ ' + rawMsg;
+    }
+    if (rawMsg.includes('Incorrect password for Canteen Owner account')) {
+      return '❌ ' + rawMsg;
+    }
+    const code = err?.code || '';
     const extracted = code || (rawMsg.match(/\((auth\/[^)]+)\)/)?.[1] || '');
     if (extracted === 'auth/too-many-requests') return '🔒 Account temporarily locked. Try again in a few minutes.';
     if (['auth/user-not-found', 'auth/wrong-password', 'auth/invalid-credential'].includes(extracted))
@@ -274,7 +306,10 @@ export default function LoginScreen() {
                 placeholder="Password"
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry
+                secureTextEntry={!showPassword}
+                showPasswordToggle
+                isPasswordVisible={showPassword}
+                onTogglePassword={() => setShowPassword((prev) => !prev)}
               />
 
               {/* Sign In button */}
@@ -421,6 +456,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     paddingVertical: Platform.OS === 'android' ? 12 : 0,
+  },
+  eyeToggleBtn: {
+    padding: 6,
+    marginLeft: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   helperText: {
     color: 'rgba(196,170,255,0.72)',

@@ -143,10 +143,10 @@ const TYPE_META: Record<string, { label: string; icon: string; color: string; bg
 
 function TypeBadge({ type }: { type: string }) {
   const m = TYPE_META[type] || TYPE_META.lecture;
+  const variant = type === 'lab' ? 'teal' : type === 'tutorial' ? 'gold' : type === 'break' ? 'info' : 'purple';
   return (
-    <GlassBadge variant="purple" size="sm" style={{ backgroundColor: m.bg, borderColor: `${m.color}40` }}>
-      <Text style={{ fontSize: 10 }}>{m.icon}</Text>
-      <Text style={{ fontSize: Glass.fontSize.xs, fontWeight: Glass.fontWeight.extrabold, color: m.color, letterSpacing: 0.3 }}>{m.label}</Text>
+    <GlassBadge variant={variant} size="sm" style={{ backgroundColor: m.bg, borderColor: `${m.color}40` }}>
+      {`${m.icon} ${m.label}`}
     </GlassBadge>
   );
 }
@@ -226,27 +226,33 @@ function SlotCard({ slot, status, branchColor, onNavigate, index }: SlotCardProp
       <Text style={[styles.subject, { opacity: isEnded ? 0.4 : 1 }]} numberOfLines={2}>
         {slot.subject}
       </Text>
-      {slot.subjectCode && (
+      {Boolean(slot.subjectCode) ? (
         <Text style={[styles.subjectCode, { opacity: isEnded ? 0.3 : 0.5 }]}>{slot.subjectCode}</Text>
-      )}
+      ) : null}
 
       {/* Glass divider */}
       <View style={styles.divider} />
 
       {/* Meta chips: room + teacher */}
-      <View style={styles.metaRow}>
-        <GlassView variant="subtle" style={styles.metaChip}>
-          <Ionicons name="location" size={13} color={isOngoing ? branchColor : Glass.purple} />
-          <Text style={[styles.metaText, { opacity: isEnded ? 0.4 : 1 }]}>{slot.room}</Text>
-        </GlassView>
-        <GlassView variant="subtle" style={styles.metaChip}>
-          <Ionicons name="person" size={13} color={isOngoing ? branchColor : Glass.purple} />
-          <Text style={[styles.metaText, { opacity: isEnded ? 0.4 : 1 }]}>{slot.teacher}</Text>
-        </GlassView>
-      </View>
+      {(Boolean(slot.room && slot.room !== '-') || Boolean(slot.teacher && slot.teacher !== '-')) && (
+        <View style={styles.metaRow}>
+          {slot.room && slot.room !== '-' ? (
+            <GlassView variant="subtle" style={styles.metaChip}>
+              <Ionicons name="location" size={13} color={isOngoing ? branchColor : Glass.purple} />
+              <Text style={[styles.metaText, { opacity: isEnded ? 0.4 : 1 }]}>{slot.room}</Text>
+            </GlassView>
+          ) : null}
+          {slot.teacher && slot.teacher !== '-' ? (
+            <GlassView variant="subtle" style={styles.metaChip}>
+              <Ionicons name="person" size={13} color={isOngoing ? branchColor : Glass.purple} />
+              <Text style={[styles.metaText, { opacity: isEnded ? 0.4 : 1 }]}>{slot.teacher}</Text>
+            </GlassView>
+          ) : null}
+        </View>
+      )}
 
       {/* Navigate button for active/upcoming */}
-      {!isEnded && onNavigate && (
+      {!isEnded && Boolean(onNavigate) && Boolean(slot.room && slot.room !== '-') ? (
         <GlassButton
           variant={isOngoing ? 'primary' : 'secondary'}
           size="md"
@@ -256,7 +262,7 @@ function SlotCard({ slot, status, branchColor, onNavigate, index }: SlotCardProp
         >
           Navigate to {slot.room}
         </GlassButton>
-      )}
+      ) : null}
     </Animated.View>
   );
 }
@@ -331,17 +337,25 @@ function LiveBanner({ slot, isOngoing, branchColor, onPress }: LiveBannerProps) 
             </Text>
           </View>
           <Text style={styles.liveSubject} numberOfLines={1}>{slot.subject}</Text>
-          <View style={styles.liveMetaRow}>
-            <View style={styles.liveMetaItem}>
-              <Ionicons name="location" size={11} color={glowColor} />
-              <Text style={styles.liveMetaText}>{slot.room}</Text>
+          {(Boolean(slot.room && slot.room !== '-') || Boolean(slot.teacher && slot.teacher !== '-')) && (
+            <View style={styles.liveMetaRow}>
+              {slot.room && slot.room !== '-' ? (
+                <View style={styles.liveMetaItem}>
+                  <Ionicons name="location" size={11} color={glowColor} />
+                  <Text style={styles.liveMetaText}>{slot.room}</Text>
+                </View>
+              ) : null}
+              {Boolean(slot.room && slot.room !== '-' && slot.teacher && slot.teacher !== '-') ? (
+                <View style={styles.liveDot} />
+              ) : null}
+              {slot.teacher && slot.teacher !== '-' ? (
+                <View style={styles.liveMetaItem}>
+                  <Ionicons name="person" size={11} color={glowColor} />
+                  <Text style={styles.liveMetaText}>{slot.teacherShort || slot.teacher}</Text>
+                </View>
+              ) : null}
             </View>
-            <View style={styles.liveDot} />
-            <View style={styles.liveMetaItem}>
-              <Ionicons name="person" size={11} color={glowColor} />
-              <Text style={styles.liveMetaText}>{slot.teacherShort}</Text>
-            </View>
-          </View>
+          )}
           <Text style={styles.liveTimeText}>{slot.startTime} – {slot.endTime}</Text>
         </View>
 
@@ -422,9 +436,9 @@ function SectionHeader({ title, count }: { title: string; count?: number }) {
   return (
     <View style={styles.sectionRow}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      {count !== undefined && (
-        <GlassBadge variant="purple" size="xs">{count}</GlassBadge>
-      )}
+      {count !== undefined ? (
+        <GlassBadge variant="purple" size="sm">{count}</GlassBadge>
+      ) : null}
     </View>
   );
 }
@@ -437,7 +451,7 @@ export default function ScheduleScreen() {
   const [viewMode, setViewMode] = useState<'today' | 'week'>('today');
   const [selectedDay, setSelectedDay] = useState<number>(() => {
     const d = new Date().getDay();
-    return d === 0 || d === 6 ? 1 : d;
+    return d === 0 ? 1 : d;
   });
   const [now, setNow] = useState(new Date());
   const [active360Modal, setActive360Modal] = useState<Campus360Location | null>(null);
@@ -497,6 +511,7 @@ export default function ScheduleScreen() {
     { num: 3, label: 'Wed' },
     { num: 4, label: 'Thu' },
     { num: 5, label: 'Fri' },
+    { num: 6, label: 'Sat' },
   ];
 
   const open360 = () => {

@@ -222,6 +222,13 @@ export default function FoodCourtScreen() {
   };
 
   useEffect(() => {
+    if (profile && profile.role !== 'food_court_staff' && profile.role !== 'college_admin' && profile.role !== 'super_admin') {
+      router.replace('/(student)' as any);
+      return;
+    }
+  }, [profile]);
+
+  useEffect(() => {
     loadCanteenData();
     const interval = setInterval(loadCanteenData, 3000); // Fast 3-second live order polling
 

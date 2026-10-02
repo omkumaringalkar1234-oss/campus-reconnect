@@ -78,11 +78,90 @@ export const SEED_CANTEEN_OWNER: UserProfile = {
   permissions: ['canteen_manager'],
 };
 
+// Initial Seed Student for JSPM Tathawade
+export const SEED_STUDENT: UserProfile = {
+  uid: 'usr_student_omkumar',
+  role: 'student',
+  collegeId: 'col_jspm_tathawade',
+  name: 'omkumar',
+  email: 'rbt26it18@jspm.edu',
+  username: 'rbt26it18',
+  registrationId: 'RBT26IT18',
+  studentId: 'RBT26IT18',
+  rollNumber: '18',
+  department: 'Information Technology',
+  division: 'Div A',
+  year: '3rd Year',
+  passwordHash: 'okgi1234',
+  status: 'active',
+  createdAt: '2025-01-01T00:00:00Z',
+};
+
+// Initial Seed College Admin for JSPM Tathawade
+export const SEED_COLLEGE_ADMIN: UserProfile = {
+  uid: 'admin_sunita_yadav',
+  role: 'college_admin',
+  collegeId: 'col_jspm_tathawade',
+  name: 'Sunita Yadav',
+  email: 'admin@jspm.edu',
+  username: 'sunita_admin',
+  phone: '+91 98220 54321',
+  passwordHash: 'admin123',
+  designation: 'Campus Dean & Principal Administrator',
+  status: 'active',
+  createdAt: '2025-01-01T00:00:00Z',
+};
+
+// Initial Seed Faculty Member for JSPM Tathawade
+export const SEED_FACULTY_USER: UserProfile = {
+  uid: 'fac_sneha',
+  role: 'teacher_staff',
+  collegeId: 'col_jspm_tathawade',
+  name: 'Prof. Sneha Deshmukh',
+  email: 'sneha.deshmukh@jspm.edu',
+  username: 'sneha_faculty',
+  phone: '+91 98230 11223',
+  department: 'Information Technology',
+  designation: 'Assistant Professor & Class Teacher',
+  isClassTeacher: true,
+  assignedDivision: 'Div A',
+  passwordHash: 'faculty123',
+  status: 'active',
+  createdAt: '2025-01-01T00:00:00Z',
+};
+
 export const DEMO_PROFILES: Record<string, UserProfile> = {
+  // Super Admin
   'omkumaringalkar1234@gmail.com': SUPER_ADMIN_ACCOUNT,
   'omkumar_01': SUPER_ADMIN_ACCOUNT,
-  'suresh_canteen': SEED_CANTEEN_OWNER,
+  'super_admin': SUPER_ADMIN_ACCOUNT,
+  'superadmin': SUPER_ADMIN_ACCOUNT,
+
+  // Student
+  'rbt26it18@jspm.edu': SEED_STUDENT,
+  'rbt26it18': SEED_STUDENT,
+  'omkumar': SEED_STUDENT,
+  'student@jspm.edu': SEED_STUDENT,
+  'student': SEED_STUDENT,
+
+  // College Admin
+  'admin@jspm.edu': SEED_COLLEGE_ADMIN,
+  'sunita_admin': SEED_COLLEGE_ADMIN,
+  'college_admin': SEED_COLLEGE_ADMIN,
+  'admin': SEED_COLLEGE_ADMIN,
+
+  // Faculty / Staff
+  'sneha.deshmukh@jspm.edu': SEED_FACULTY_USER,
+  'sneha_faculty': SEED_FACULTY_USER,
+  'teacher_staff': SEED_FACULTY_USER,
+  'faculty': SEED_FACULTY_USER,
+  'staff': SEED_FACULTY_USER,
+
+  // Canteen Owner
   'suresh.patil@jspm.edu': SEED_CANTEEN_OWNER,
+  'suresh_canteen': SEED_CANTEEN_OWNER,
+  'food_court_staff': SEED_CANTEEN_OWNER,
+  'canteen': SEED_CANTEEN_OWNER,
 };
 
 export const SEED_DEPARTMENTS: Department[] = [
@@ -615,9 +694,9 @@ export const SEED_ACTIVE_ORDER: Order = {
   orderNumber: '#CC4949',
   collegeId: 'col_jspm_tathawade',
   foodCourtId: 'fc_jspm_main',
-  studentUid: 'demo_student_aarav',
-  studentName: 'Aarav Kulkarni',
-  studentIdentifier: '3104 · Div A',
+  studentUid: 'usr_student_omkumar',
+  studentName: 'omkumar',
+  studentIdentifier: 'RBT26IT18 · Div A',
   items: [
     {
       itemId: 'food_vada_pav',
