@@ -8,8 +8,9 @@ export interface TimetableEntry {
   startTime: string; // "08:15 AM"
   endTime: string;   // "09:15 AM"
   subject: string;
+  originalSubject?: string; // preserved original subject name when overridden to doubt session
   subjectCode?: string;
-  type: 'lecture' | 'lab' | 'tutorial' | 'break';
+  type: 'lecture' | 'lab' | 'tutorial' | 'break' | 'doubt';
   room: string;
   teacher: string;
   teacherShort: string;
@@ -185,6 +186,12 @@ export function resolveStudentSchedulePrefsFromPrn(prn: string) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// Returns true if a 24-h "HH:MM" string is at or after 15:30
+function isAtOrAfter1530(t: string): boolean {
+  const [h, m] = t.split(':').map(Number);
+  return h > 15 || (h === 15 && m >= 30);
+}
+
 function makeSlot(
   time: string,
   subject: string,
@@ -194,13 +201,33 @@ function makeSlot(
   type: TimetableEntry['type'] = 'lecture',
   subjectCode?: string
 ): TimetableEntry {
-  const [startRaw, endRaw] = time.split('–').map((s) => s.trim());
+  // Support both '–' (en-dash) and '-' (hyphen) as separators
+  const [startRaw, endRaw] = time.split(/\s*[–-]\s*/).map((s) => s.trim());
   const toAmPm = (t: string) => {
     const [h, m] = t.split(':').map(Number);
     const suffix = h >= 12 ? 'PM' : 'AM';
     const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
     return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${suffix}`;
   };
+
+  // ── Doubt Solving Rule ──────────────────────────────────────────────────────
+  // Every slot that starts at or after 15:30 (3:30 PM) becomes a Doubt Solving
+  // Session, regardless of branch.  We preserve the original subject for info.
+  if (type !== 'break' && isAtOrAfter1530(startRaw)) {
+    return {
+      time,
+      startTime: toAmPm(startRaw),
+      endTime: toAmPm(endRaw),
+      subject: 'Doubt Solving Session',
+      originalSubject: subject,
+      subjectCode: undefined,
+      type: 'doubt',
+      room,
+      teacher,
+      teacherShort,
+    };
+  }
+
   return {
     time,
     startTime: toAmPm(startRaw),
@@ -4076,7 +4103,7 @@ function enrichDivisionSchedule(divisionId: string, schedule: DaySchedule[]): Da
   const defaultRoom = DIVISION_ROOM_MAP[divisionId] || '';
   const facultyMap = DIVISION_FACULTY[divisionId] || {};
 
-  return schedule.map((day) => {
+  const enriched = schedule.map((day) => {
     if (day.dayShort === 'Sat') {
       return buildSaturdayDaySchedule(divisionId);
     }
@@ -4168,6 +4195,26 @@ function enrichDivisionSchedule(divisionId: string, schedule: DaySchedule[]): Da
       }),
     };
   });
+
+  enriched.push({
+    day: 'Sunday',
+    dayShort: 'Sun',
+    dayNum: 0,
+    slots: [
+      {
+        time: 'All Day',
+        startTime: '12:00 AM',
+        endTime: '11:59 PM',
+        subject: 'Holiday',
+        type: 'break',
+        room: '-',
+        teacher: '-',
+        teacherShort: '-',
+      },
+    ],
+  });
+
+  return enriched;
 }
 
 export const TIMETABLE_BRANCHES: BranchData[] = [
@@ -4433,7 +4480,7 @@ export function getTodayLiveSchedule(
 ) {
   const now = new Date();
   const dayNum = now.getDay(); // 0=Sun, 1=Mon .. 6=Sat
-  const effectiveDay = dayNum === 0 ? 1 : dayNum;
+  const effectiveDay = dayNum;
 
   const dayData = getDaySchedule(branchId, divisionId, batchId, effectiveDay);
   if (!dayData) return { ongoing: null, upcoming: [], ended: [] };
