@@ -139,11 +139,12 @@ const TYPE_META: Record<string, { label: string; icon: string; color: string; bg
   lab: { label: 'Lab', icon: '🧪', color: Glass.teal, bg: Glass.tealDim },
   tutorial: { label: 'Tutorial', icon: '✏️', color: Glass.gold, bg: Glass.goldDim },
   break: { label: 'Break', icon: '☕', color: Glass.textDim, bg: 'rgba(156,163,175,0.1)' },
+  doubt: { label: 'Doubt Session', icon: '🙋', color: Glass.gold, bg: Glass.goldDim },
 };
 
 function TypeBadge({ type }: { type: string }) {
   const m = TYPE_META[type] || TYPE_META.lecture;
-  const variant = type === 'lab' ? 'teal' : type === 'tutorial' ? 'gold' : type === 'break' ? 'info' : 'purple';
+  const variant = type === 'lab' ? 'teal' : type === 'tutorial' ? 'gold' : type === 'doubt' ? 'gold' : type === 'break' ? 'info' : 'purple';
   return (
     <GlassBadge variant={variant} size="sm" style={{ backgroundColor: m.bg, borderColor: `${m.color}40` }}>
       {`${m.icon} ${m.label}`}

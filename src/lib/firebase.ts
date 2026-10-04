@@ -12,12 +12,12 @@ import { getStorage } from 'firebase/storage';
 import { Platform } from 'react-native';
 
 export const firebaseConfig = {
-  apiKey: 'AIzaSyAAtQuMwlhNmF0kDJVlA1ovaRyRJj7c29w',
-  authDomain: 'campus-connect-41b23.firebaseapp.com',
-  projectId: 'campus-connect-41b23',
-  storageBucket: 'campus-connect-41b23.firebasestorage.app',
-  messagingSenderId: '561127901173',
-  appId: '1:561127901173:web:3b1b74f8242f2b2683c2bc',
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? 'AIzaSyAAtQuMwlhNmF0kDJVlA1ovaRyRJj7c29w',
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN ?? 'campus-connect-41b23.firebaseapp.com',
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ?? 'campus-connect-41b23',
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET ?? 'campus-connect-41b23.firebasestorage.app',
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '561127901173',
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID ?? '1:561127901173:web:3b1b74f8242f2b2683c2bc',
 };
 
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();

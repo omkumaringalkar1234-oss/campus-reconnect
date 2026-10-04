@@ -55,7 +55,7 @@ export const SUPER_ADMIN_ACCOUNT: UserProfile = {
   name: 'Omkumar Gajanan Ingalkar',
   username: 'omkumar_01',
   email: 'omkumaringalkar1234@gmail.com',
-  passwordHash: 'okgi1234ADMIN',
+  // NOTE: Password managed by Firebase Auth – do NOT store plaintext passwords in source code.
   status: 'active',
   createdAt: '2025-01-01T00:00:00Z',
   designation: 'Chief Platform Administrator & Founder',
@@ -70,7 +70,7 @@ export const SEED_CANTEEN_OWNER: UserProfile = {
   username: 'suresh_canteen',
   email: 'suresh.patil@jspm.edu',
   phone: '+91 98765 43210',
-  passwordHash: 'canteen123',
+  // NOTE: Password managed by Firebase Auth – do NOT store plaintext passwords in source code.
   status: 'active',
   createdAt: '2025-01-01T00:00:00Z',
   designation: 'Central Food Court Owner & Licensee',
@@ -92,7 +92,7 @@ export const SEED_STUDENT: UserProfile = {
   department: 'Information Technology',
   division: 'Div A',
   year: '3rd Year',
-  passwordHash: 'okgi1234',
+  // NOTE: Password managed by Firebase Auth – do NOT store plaintext passwords in source code.
   status: 'active',
   createdAt: '2025-01-01T00:00:00Z',
 };
@@ -106,7 +106,7 @@ export const SEED_COLLEGE_ADMIN: UserProfile = {
   email: 'admin@jspm.edu',
   username: 'sunita_admin',
   phone: '+91 98220 54321',
-  passwordHash: 'admin123',
+  // NOTE: Password managed by Firebase Auth – do NOT store plaintext passwords in source code.
   designation: 'Campus Dean & Principal Administrator',
   status: 'active',
   createdAt: '2025-01-01T00:00:00Z',
@@ -125,7 +125,7 @@ export const SEED_FACULTY_USER: UserProfile = {
   designation: 'Assistant Professor & Class Teacher',
   isClassTeacher: true,
   assignedDivision: 'Div A',
-  passwordHash: 'faculty123',
+  // NOTE: Password managed by Firebase Auth – do NOT store plaintext passwords in source code.
   status: 'active',
   createdAt: '2025-01-01T00:00:00Z',
 };
