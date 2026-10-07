@@ -4438,6 +4438,17 @@ export function getDivisionSchedule(
   return batch?.schedule;
 }
 
+import { findCourseByQuery } from './subject-catalog-data';
+
+export function enrichSlot(slot: TimetableEntry): TimetableEntry {
+  if (slot.subjectCode) return slot;
+  const course = findCourseByQuery(slot.originalSubject || slot.subject);
+  return {
+    ...slot,
+    subjectCode: course?.code,
+  };
+}
+
 export function getDaySchedule(
   branchId: string,
   divisionId: string,
@@ -4445,8 +4456,14 @@ export function getDaySchedule(
   dayNum: number
 ): DaySchedule | undefined {
   const schedule = getDivisionSchedule(branchId, divisionId, batchId);
-  return schedule?.find((d) => d.dayNum === dayNum);
+  const day = schedule?.find((d) => d.dayNum === dayNum);
+  if (!day) return undefined;
+  return {
+    ...day,
+    slots: day.slots.map(enrichSlot),
+  };
 }
+
 
 /** Returns the current class status given current time */
 export function getSlotStatus(

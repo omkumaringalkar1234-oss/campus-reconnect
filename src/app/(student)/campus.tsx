@@ -17,6 +17,8 @@ import { DataService } from '@/services/data-service';
 import { SEED_360_LOCATIONS, SEED_ROOMS, SEED_FACULTY } from '@/services/seed-data';
 import { Room, Faculty, Campus360Location } from '@/types';
 import { Spatial360Viewer } from '@/components/spatial-360-viewer';
+import { CampusContactsModal } from '@/components/campus-contacts-modal';
+import { LostFoundModal } from '@/components/lost-found-modal';
 import {
   GlassCard,
   GlassView,
@@ -39,6 +41,8 @@ export default function CampusScreen() {
   const [locations360, setLocations360] = useState<Campus360Location[]>(SEED_360_LOCATIONS);
   const [selected360Spot, setSelected360Spot] = useState<Campus360Location | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [showContactsModal, setShowContactsModal] = useState(false);
+  const [showLostFoundModal, setShowLostFoundModal] = useState(false);
 
   const filters = ['All', 'Rooms', 'Labs', 'Faculty', 'Departments'];
 
@@ -161,7 +165,39 @@ export default function CampusScreen() {
           </View>
         </GlassCard>
 
+        {/* ── RSCOE DIRECTORY & STUDENT SERVICES ── */}
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: Glass.space.lg }}>
+          <GlassCard
+            variant="interactive"
+            style={{ flex: 1, padding: 14 }}
+            onPress={() => setShowContactsModal(true)}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(74, 222, 128, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="call" size={16} color="#4ADE80" />
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: Glass.text }}>Helplines</Text>
+            </View>
+            <Text style={{ fontSize: 11, color: Glass.textMuted }}>Emergency & TPO contacts</Text>
+          </GlassCard>
+
+          <GlassCard
+            variant="interactive"
+            style={{ flex: 1, padding: 14 }}
+            onPress={() => setShowLostFoundModal(true)}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(255, 75, 166, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="search" size={16} color={Glass.purplePink} />
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: Glass.text }}>Lost & Found</Text>
+            </View>
+            <Text style={{ fontSize: 11, color: Glass.textMuted }}>Belongings & notices</Text>
+          </GlassCard>
+        </View>
+
         {/* POPULAR PLACES SECTION */}
+
         <GlassSectionHeader
           title="Popular places"
           subtitle={`${filteredRooms.length} venues`}
@@ -328,9 +364,22 @@ export default function CampusScreen() {
           </View>
         )}
       </GlassModal>
+
+      {/* CAMPUS CONTACTS & HELPLINES MODAL */}
+      <CampusContactsModal
+        visible={showContactsModal}
+        onClose={() => setShowContactsModal(false)}
+      />
+
+      {/* CAMPUS LOST & FOUND MODAL */}
+      <LostFoundModal
+        visible={showLostFoundModal}
+        onClose={() => setShowLostFoundModal(false)}
+      />
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeContainer: {

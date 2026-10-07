@@ -17,6 +17,9 @@ import {
     loadSchedulePrefsForStudent,
 } from '@/components/schedule-onboarding-wizard';
 import { Spatial360Viewer } from '@/components/spatial-360-viewer';
+import { AttendanceTrackerModal } from '@/components/attendance-tracker-modal';
+import { AcademicCalendarModal } from '@/components/academic-calendar-view';
+import { CourseCatalogModal } from '@/components/course-catalog-modal';
 import {
     GlassBadge,
     GlassButton,
@@ -456,6 +459,9 @@ export default function ScheduleScreen() {
   });
   const [now, setNow] = useState(new Date());
   const [active360Modal, setActive360Modal] = useState<Campus360Location | null>(null);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showCatalogModal, setShowCatalogModal] = useState(false);
   const headerFade = useRef(new Animated.Value(0)).current;
 
   // Tick every 30s
@@ -586,6 +592,33 @@ export default function ScheduleScreen() {
           />
         )}
 
+        {/* ── RSCOE QUICK TOOLS ───────────────────────────────────────────── */}
+        <View style={styles.toolsRow}>
+          <Pressable
+            style={[styles.toolBtn, { borderColor: 'rgba(74, 222, 128, 0.35)', backgroundColor: 'rgba(74, 222, 128, 0.08)' }]}
+            onPress={() => setShowAttendanceModal(true)}
+          >
+            <Ionicons name="shield-checkmark" size={14} color="#4ADE80" />
+            <Text style={[styles.toolBtnText, { color: '#4ADE80' }]}>Attendance (75%)</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.toolBtn, { borderColor: 'rgba(196, 170, 255, 0.35)', backgroundColor: 'rgba(196, 170, 255, 0.08)' }]}
+            onPress={() => setShowCalendarModal(true)}
+          >
+            <Ionicons name="calendar" size={14} color={Glass.purple} />
+            <Text style={[styles.toolBtnText, { color: Glass.purple }]}>Academic Almanac</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.toolBtn, { borderColor: 'rgba(255, 184, 75, 0.35)', backgroundColor: 'rgba(255, 184, 75, 0.08)' }]}
+            onPress={() => setShowCatalogModal(true)}
+          >
+            <Ionicons name="book" size={14} color={Glass.gold} />
+            <Text style={[styles.toolBtnText, { color: Glass.gold }]}>Courses</Text>
+          </Pressable>
+        </View>
+
         {/* ── VIEW TOGGLE ─────────────────────────────────────────────────── */}
         <View style={styles.toggleGlass}>
           {(['today', 'week'] as const).map((mode) => (
@@ -695,9 +728,29 @@ export default function ScheduleScreen() {
         allLocations={SEED_360_LOCATIONS}
         onClose={() => setActive360Modal(null)}
       />
+
+      {/* ATTENDANCE TRACKER MODAL */}
+      <AttendanceTrackerModal
+        visible={showAttendanceModal}
+        onClose={() => setShowAttendanceModal(false)}
+        todaySlots={todaySlots}
+      />
+
+      {/* ACADEMIC CALENDAR & HOLIDAYS MODAL */}
+      <AcademicCalendarModal
+        visible={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+      />
+
+      {/* COURSE CATALOG MODAL */}
+      <CourseCatalogModal
+        visible={showCatalogModal}
+        onClose={() => setShowCatalogModal(false)}
+      />
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   root: {
@@ -773,6 +826,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: Glass.space.md,
     paddingVertical: Glass.space.xs,
     borderRadius: Glass.radius.pill,
+  },
+  toolsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: Glass.space.md,
+  },
+  toolBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  toolBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   toggleBtnActive: {
     shadowColor: '#000',

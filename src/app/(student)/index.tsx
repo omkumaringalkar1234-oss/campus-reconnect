@@ -19,6 +19,11 @@ import {
     SchedulePrefs,
 } from '@/components/schedule-onboarding-wizard';
 import { Spatial360Viewer } from '@/components/spatial-360-viewer';
+import { AttendanceTrackerModal } from '@/components/attendance-tracker-modal';
+import { AcademicCalendarModal } from '@/components/academic-calendar-view';
+import { CampusContactsModal } from '@/components/campus-contacts-modal';
+import { CourseCatalogModal } from '@/components/course-catalog-modal';
+import { LostFoundModal } from '@/components/lost-found-modal';
 import {
     GlassAvatar,
     GlassBadge,
@@ -105,6 +110,11 @@ export default function StudentHomeScreen() {
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [active360Modal, setActive360Modal] = useState<Campus360Location | null>(null);
   const [schedulePrefs, setSchedulePrefs] = useState<SchedulePrefs | null>(null);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showContactsModal, setShowContactsModal] = useState(false);
+  const [showCatalogModal, setShowCatalogModal] = useState(false);
+  const [showLostFoundModal, setShowLostFoundModal] = useState(false);
   const [now, setNow] = useState(new Date());
 
   // Refresh clock every 60s
@@ -448,6 +458,57 @@ export default function StudentHomeScreen() {
           </GlassCard>
         )}
 
+        {/* ── RSCOE PULSE CAMPUS HUB ── */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Campus Hub</Text>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 10, paddingBottom: 16 }}
+        >
+          <QuickActionPill
+            icon={<Ionicons name="shield-checkmark" size={22} color="#4ADE80" />}
+            label="Attendance"
+            subLabel="75% Buffer"
+            color="#4ADE80"
+            onPress={() => setShowAttendanceModal(true)}
+          />
+
+          <QuickActionPill
+            icon={<Ionicons name="calendar" size={22} color={glass.purple} />}
+            label="Almanac"
+            subLabel="Exams & Dates"
+            color={glass.purple}
+            onPress={() => setShowCalendarModal(true)}
+          />
+
+          <QuickActionPill
+            icon={<Ionicons name="call" size={22} color={glass.tealBright} />}
+            label="Contacts"
+            subLabel="Helplines & TPO"
+            color={glass.tealBright}
+            onPress={() => setShowContactsModal(true)}
+          />
+
+          <QuickActionPill
+            icon={<Ionicons name="book" size={22} color={glass.gold} />}
+            label="Syllabus"
+            subLabel="Course Codes"
+            color={glass.gold}
+            onPress={() => setShowCatalogModal(true)}
+          />
+
+          <QuickActionPill
+            icon={<Ionicons name="search" size={22} color={glass.purplePink} />}
+            label="Lost & Found"
+            subLabel="Campus Board"
+            color={glass.purplePink}
+            onPress={() => setShowLostFoundModal(true)}
+          />
+        </ScrollView>
+
         {/* LIVE CLASS SECTION */}
         <View style={styles.sectionHeaderRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -660,9 +721,41 @@ export default function StudentHomeScreen() {
         allLocations={SEED_360_LOCATIONS}
         onClose={() => setActive360Modal(null)}
       />
+
+      {/* ATTENDANCE TRACKER MODAL */}
+      <AttendanceTrackerModal
+        visible={showAttendanceModal}
+        onClose={() => setShowAttendanceModal(false)}
+        todaySlots={liveSchedule?.upcoming || []}
+      />
+
+      {/* ACADEMIC CALENDAR & HOLIDAYS MODAL */}
+      <AcademicCalendarModal
+        visible={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+      />
+
+      {/* CAMPUS CONTACTS MODAL */}
+      <CampusContactsModal
+        visible={showContactsModal}
+        onClose={() => setShowContactsModal(false)}
+      />
+
+      {/* COURSE CATALOG MODAL */}
+      <CourseCatalogModal
+        visible={showCatalogModal}
+        onClose={() => setShowCatalogModal(false)}
+      />
+
+      {/* LOST & FOUND MODAL */}
+      <LostFoundModal
+        visible={showLostFoundModal}
+        onClose={() => setShowLostFoundModal(false)}
+      />
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeContainer: {

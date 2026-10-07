@@ -44,3 +44,5 @@ example
 
 # Vercel
 .vercel/
+.vercel
+.env*
